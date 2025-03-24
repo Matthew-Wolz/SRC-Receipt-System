@@ -26,4 +26,6 @@ dist-ssr
 *.sw?
 
 # Ignore environment variable file
-.env
+
+frontend/env
+backend/env
