@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import GuestPassForm from './components/GuestPassForm';
-import 'bootstrap/dist/css/bootstrap.min.css';
+import "bootstrap/dist/css/bootstrap.min.css";
 
 function App() {
   const [showForm, setShowForm] = useState(false);
