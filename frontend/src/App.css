@@ -1,42 +1,59 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
+/* App.css */
+body {
+  background-color: #f8f9fa; /* Light gray background */
+  font-family: Arial, sans-serif;
+  margin: 0;
+  height: 100vh; /* Full viewport height */
+  display: flex;
+  justify-content: center; /* Center horizontally */
+  align-items: center; /* Center vertically */
+}
+
+.truman-purple {
+  color: #502D7F; /* Truman State purple */
+}
+
+.truman-button {
+  background-color: #502D7F; /* Purple background */
+  border-color: #502D7F; /* Purple border */
+  color: #FFFFFF; /* White text */
+  padding: 10px 20px;
+  font-size: 18px;
+  margin-top: 20px;
+}
+
+.truman-button:hover {
+  background-color: #3A1F5E; /* Darker purple on hover */
+  border-color: #3A1F5E;
+}
+
+.container {
+  max-width: 800px;
+  width: 100%; /* Ensure it takes full width up to max-width */
+  padding: 20px;
+  background-color: #FFFFFF; /* White background */
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+}
+
+.text-center {
   text-align: center;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.truman-form {
+  background-color: #FFFFFF; /* White background */
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow */
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.form-control {
+  border: 1px solid #D9D9D9; /* Light gray border */
+  border-radius: 5px;
+  padding: 10px;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
-
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
+.form-control:focus {
+  border-color: #502D7F; /* Purple border on focus */
+  box-shadow: 0 0 5px rgba(80, 45, 127, 0.5); /* Purple shadow on focus */
 }
