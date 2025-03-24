@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import ChildrenGuestPassForm from "./ChildrenGuestPassForm";
 import GuestPassForm from "./GuestPassForm";
+import TenVisitGuestPassForm from "./TenVisitGuestPassForm"; // Import the new component
 import ATSUPunchCardForm from "./ATSUPunchCardForm";
 import YouthGuestPassForm from "./YouthGuestPassForm";
 import AthleticTapeForm from "./AthleticTapeForm";
@@ -13,21 +14,21 @@ function WelcomePage() {
   const renderForm = () => {
     switch (selectedProduct) {
       case "10-visit-children":
-        return <ChildrenGuestPassForm product="10 Visit Children Guest Pass" />;
+        return <ChildrenGuestPassForm />;
       case "10-visit":
-        return <GuestPassForm product="10 Visit Guest Pass" />;
+        return <TenVisitGuestPassForm />; // Use the new component
       case "atsu-punch-card":
-        return <ATSUPunchCardForm product="ATSU Punch Card" />;
+        return <ATSUPunchCardForm />;
       case "daily-guest-pass":
-        return <GuestPassForm product="Daily Guest Pass" />;
+        return <GuestPassForm />;
       case "youth-guest-pass":
-        return <YouthGuestPassForm product="Youth Guest Pass" />;
+        return <YouthGuestPassForm />;
       case "athletic-tape":
-        return <AthleticTapeForm product="Athletic Tape" />;
+        return <AthleticTapeForm />;
       case "hair-tie":
-        return <HairTieForm product="Hair Tie" />;
+        return <HairTieForm />;
       case "punch-card-sheet":
-        return <PunchCardSheetForm product="Punch Card Sheet" />;
+        return <PunchCardSheetForm />;
       default:
         return null;
     }

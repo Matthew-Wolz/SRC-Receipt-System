@@ -39,8 +39,16 @@ const transporter = nodemailer.createTransport({
 
 // Function to get the next guest pass number
 const getNextGuestPassNumber = async () => {
-  const lastPass = await GuestPass.findOne().sort({ guestPassNumber: -1 });
-  return lastPass ? lastPass.guestPassNumber + 1 : 1;
+  // Find the highest guestPassNumber in both collections
+  const lastGuestPass = await GuestPass.findOne().sort({ guestPassNumber: -1 });
+  const lastTenVisitPunchCard = await TenVisitPunchCard.findOne().sort({ guestPassNumber: -1 });
+
+  // Get the highest number from both collections
+  const highestGuestPassNumber = lastGuestPass ? lastGuestPass.guestPassNumber : 0;
+  const highestTenVisitPunchCardNumber = lastTenVisitPunchCard ? lastTenVisitPunchCard.guestPassNumber : 0;
+
+  // Return the next available number
+  return Math.max(highestGuestPassNumber, highestTenVisitPunchCardNumber) + 1;
 };
 
 // Submit Guest Pass Endpoint
@@ -48,9 +56,12 @@ app.post("/api/submit-guest-pass", async (req, res) => {
   const { sponsorName, guestName, staffInitials, email, product } = req.body;
   const dateSold = new Date().toLocaleDateString();
 
+  console.log("Received submission:", { sponsorName, guestName, staffInitials, email, product }); // Log the request data
+
   try {
     // Get the next guest pass number
     const guestPassNumber = await getNextGuestPassNumber();
+    console.log("Next guest pass number:", guestPassNumber); // Log the generated number
 
     let newPass;
     let amount;
@@ -111,6 +122,7 @@ app.post("/api/submit-guest-pass", async (req, res) => {
 
     // Save the new pass to the database
     await newPass.save();
+    console.log("Saved to database:", newPass); // Log the saved document
 
     // Update Excel sheet
     const newRow = [sponsorName, guestName, dateSold, staffInitials, guestPassNumber, email || "N/A", product, amount];

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-function GuestPassForm({ onClose, product }) {
+function GuestPassForm({ onClose }) {
   const [sponsorName, setSponsorName] = useState("");
   const [guestName, setGuestName] = useState("");
   const [staffInitials, setStaffInitials] = useState("");
@@ -15,7 +15,7 @@ function GuestPassForm({ onClose, product }) {
       guestName,
       staffInitials,
       email: emailReceipt ? email : null,
-      product, // Use the product prop
+      product: "Daily Guest Pass", // Hardcoded for this form
     };
 
     try {
@@ -26,8 +26,7 @@ function GuestPassForm({ onClose, product }) {
       });
 
       if (response.ok) {
-        alert("Guest pass submitted successfully!");
-
+        alert("Daily Guest Pass submitted successfully!");
         // Reset the form
         setSponsorName("");
         setGuestName("");
@@ -35,11 +34,11 @@ function GuestPassForm({ onClose, product }) {
         setEmailReceipt(false);
         setEmail("");
       } else {
-        alert("Failed to submit guest pass.");
+        alert("Failed to submit Daily Guest Pass.");
       }
     } catch (error) {
-      console.error("Error submitting guest pass:", error);
-      alert("An error occurred while submitting the guest pass.");
+      console.error("Error submitting Daily Guest Pass:", error);
+      alert("An error occurred while submitting the Daily Guest Pass.");
     }
   };
 
