@@ -1,15 +1,46 @@
 import React, { useState } from "react";
-import ReceiptForm from "./ReceiptForm";
 
-function GuestPassForm({ onClose }) {
+function GuestPassForm({ onClose, product }) {
   const [sponsorName, setSponsorName] = useState("");
   const [guestName, setGuestName] = useState("");
   const [staffInitials, setStaffInitials] = useState("");
-  const [showReceiptForm, setShowReceiptForm] = useState(false);
+  const [emailReceipt, setEmailReceipt] = useState(false);
+  const [email, setEmail] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setShowReceiptForm(true);
+
+    const guestPassData = {
+      sponsorName,
+      guestName,
+      staffInitials,
+      email: emailReceipt ? email : null,
+      product, // Use the product prop
+    };
+
+    try {
+      const response = await fetch("http://localhost:5000/api/submit-guest-pass", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(guestPassData),
+      });
+
+      if (response.ok) {
+        alert("Guest pass submitted successfully!");
+
+        // Reset the form
+        setSponsorName("");
+        setGuestName("");
+        setStaffInitials("");
+        setEmailReceipt(false);
+        setEmail("");
+      } else {
+        alert("Failed to submit guest pass.");
+      }
+    } catch (error) {
+      console.error("Error submitting guest pass:", error);
+      alert("An error occurred while submitting the guest pass.");
+    }
   };
 
   return (
@@ -45,27 +76,40 @@ function GuestPassForm({ onClose }) {
             required
           />
         </div>
-        <div className="d-flex gap-2"> {/* Flexbox for button alignment */}
+        <div className="mb-3 form-check">
+          <input
+            type="checkbox"
+            className="form-check-input"
+            checked={emailReceipt}
+            onChange={(e) => setEmailReceipt(e.target.checked)}
+          />
+          <label className="form-check-label">Email receipt?</label>
+        </div>
+        {emailReceipt && (
+          <div className="mb-3">
+            <label className="form-label">Email Address</label>
+            <input
+              type="email"
+              className="form-control"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+        )}
+        <div className="d-flex gap-2">
           <button type="submit" className="btn truman-button flex-grow-1">
-            Next
+            Submit
           </button>
           <button
             type="button"
-            className="btn truman-button flex-grow-1"
+            className="btn btn-secondary flex-grow-1"
             onClick={onClose}
           >
             Close
           </button>
         </div>
       </form>
-      {showReceiptForm && (
-        <ReceiptForm
-          sponsorName={sponsorName}
-          guestName={guestName}
-          staffInitials={staffInitials}
-          onClose={onClose}
-        />
-      )}
     </div>
   );
 }

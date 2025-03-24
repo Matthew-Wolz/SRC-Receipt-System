@@ -1,39 +1,67 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 
-function ReceiptForm({ sponsorName, guestName, staffInitials, onClose }) {
-  const [email, setEmail] = useState('');
-  const [emailReceipt, setEmailReceipt] = useState(false);
+function ReceiptForm({ sponsorName, guestName, staffInitials, emailReceipt, onClose }) {
+  const [email, setEmail] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const response = await fetch('http://localhost:5000/api/send-receipt', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sponsorName, guestName, staffInitials, email }),
-    });
-    if (response.ok) {
-      alert('Receipt sent successfully');
-      onClose();
-    } else {
-      alert('Failed to send receipt');
+
+    const guestPassData = {
+      sponsorName,
+      guestName,
+      staffInitials,
+      dateSold: new Date().toLocaleDateString(),
+      guestPassNumber: 1, // Replace with dynamic logic for incrementing numbers
+      email: emailReceipt ? email : null, // Only include email if receipt is requested
+    };
+
+    try {
+      // Send data to the backend
+      const response = await fetch("http://localhost:5000/api/submit-guest-pass", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(guestPassData),
+      });
+
+      if (response.ok) {
+        alert("Guest pass submitted successfully!");
+        onClose(); // Close the form
+      } else {
+        alert("Failed to submit guest pass.");
+      }
+    } catch (error) {
+      console.error("Error submitting guest pass:", error);
+      alert("An error occurred while submitting the guest pass.");
     }
   };
 
   return (
     <div className="mt-3">
       <form onSubmit={handleSubmit}>
-        <div className="mb-3 form-check">
-          <input type="checkbox" className="form-check-input" checked={emailReceipt} onChange={(e) => setEmailReceipt(e.target.checked)} />
-          <label className="form-check-label">Email receipt?</label>
-        </div>
         {emailReceipt && (
           <div className="mb-3">
             <label className="form-label">Email Address</label>
-            <input type="email" className="form-control" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <input
+              type="email"
+              className="form-control"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
           </div>
         )}
-        <button type="submit" className="btn btn-primary">Send Receipt</button>
-        <button type="button" className="btn btn-secondary ms-2" onClick={onClose}>Close</button>
+        <div className="d-flex gap-2">
+          <button type="submit" className="btn truman-button flex-grow-1">
+            Submit
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary flex-grow-1"
+            onClick={onClose}
+          >
+            Close
+          </button>
+        </div>
       </form>
     </div>
   );

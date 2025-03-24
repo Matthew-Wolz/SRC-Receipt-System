@@ -17,9 +17,13 @@ body {
   background-color: #502D7F; /* Purple background */
   border-color: #502D7F; /* Purple border */
   color: #FFFFFF; /* White text */
-  padding: 10px 20px;
-  font-size: 18px;
-  margin-top: 20px;
+  padding: 10px 20px; /* Consistent padding */
+  font-size: 16px; /* Consistent font size */
+  height: 40px; /* Fixed height */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%; /* Full width */
 }
 
 .truman-button:hover {
@@ -27,17 +31,26 @@ body {
   border-color: #3A1F5E;
 }
 
-.container {
-  max-width: 800px;
-  width: 100%; /* Ensure it takes full width up to max-width */
-  padding: 20px;
-  background-color: #FFFFFF; /* White background */
-  border-radius: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+.btn-secondary {
+  background-color: #6c757d; /* Bootstrap secondary color */
+  border-color: #6c757d;
+  color: #FFFFFF; /* White text */
+  padding: 10px 20px; /* Consistent padding */
+  font-size: 16px; /* Consistent font size */
+  height: 40px; /* Fixed height */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%; /* Full width */
 }
 
-.text-center {
-  text-align: center;
+.btn-secondary:hover {
+  background-color: #5a6268; /* Darker secondary color on hover */
+  border-color: #545b62;
+}
+
+.d-flex.gap-2 {
+  gap: 10px; /* Space between buttons */
 }
 
 .truman-form {
