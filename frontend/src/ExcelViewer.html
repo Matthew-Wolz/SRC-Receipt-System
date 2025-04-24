@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Receipts Excel Sheet</title>
+</head>
+<body>
+  <h1>Download Receipts Excel Sheet</h1>
+  <a href="http://localhost:5000/api/receipts" download>Download Excel File</a>
+  <button onclick="clearExcel()">Clear Excel Data</button>
+
+  <script>
+    function clearExcel() {
+      fetch("http://localhost:5000/api/clear-excel", {
+        method: "POST"
+      })
+      .then(response => {
+        if (response.ok) {
+          alert("Excel data cleared successfully");
+        } else {
+          alert("Failed to clear Excel data");
+        }
+      })
+      .catch(error => {
+        console.error("Error:", error);
+        alert("An error occurred");
+      });
+    }
+  </script>
+</body>
+</html>

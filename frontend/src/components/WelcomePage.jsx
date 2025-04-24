@@ -6,14 +6,45 @@ import AthleticTapeForm from "./AthleticTapeForm";
 import HairTieForm from "./HairTieForm";
 import ATSUPunchCardForm from "./ATSUPunchCardForm";
 import PunchCardSheetForm from "./PunchCardSheetForm";
+import ReceiptLookup from './ReceiptLookup';
 
 function WelcomePage() {
   const [selectedProduct, setSelectedProduct] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
+  const [showReceiptLookup, setShowReceiptLookup] = useState(false);
 
   const handleProductSelect = (e) => {
     setSelectedProduct(e.target.value);
     setShowForm(true);
+  };
+
+  const handleDownloadExcel = () => {
+    window.open("http://localhost:5000/api/receipts", "_blank");
+  };
+
+  const handleClearExcel = async () => {
+    if (!window.confirm("Are you sure you want to clear all Excel data? This cannot be undone.")) {
+      return;
+    }
+
+    setIsClearing(true);
+    try {
+      const response = await fetch("http://localhost:5000/api/clear-excel", {
+        method: "POST"
+      });
+
+      if (response.ok) {
+        alert("Excel data cleared successfully");
+      } else {
+        throw new Error("Failed to clear Excel data");
+      }
+    } catch (error) {
+      console.error("Error clearing Excel:", error);
+      alert(error.message);
+    } finally {
+      setIsClearing(false);
+    }
   };
 
   const renderForm = () => {
@@ -44,6 +75,7 @@ function WelcomePage() {
       <div className="text-center">
         <h1 className="truman-purple">Student Recreation Center</h1>
         <h2 className="truman-purple">Guest Pass System</h2>
+        
         <div className="mb-3">
           <label className="form-label truman-purple">Select Product</label>
           <select
@@ -62,8 +94,35 @@ function WelcomePage() {
             <option value="Punch Card Sheet">Punch Card Sheet</option>
           </select>
         </div>
+        
+        <div className="d-flex justify-content-center gap-2 mb-4">
+          <button 
+            onClick={handleDownloadExcel}
+            className="btn truman-button"
+          >
+            Download Excel Sheet
+          </button>
+          
+          <button 
+            onClick={handleClearExcel}
+            className="btn btn-danger"
+            disabled={isClearing}
+          >
+            {isClearing ? "Clearing..." : "Clear Excel Data"}
+          </button>
+
+          <button 
+            onClick={() => setShowReceiptLookup(!showReceiptLookup)}
+            className="btn btn-info"
+          >
+            {showReceiptLookup ? "Hide Receipt Lookup" : "Lookup Receipt"}
+          </button>
+        </div>
       </div>
+      
       {showForm && renderForm()}
+
+      {showReceiptLookup && <ReceiptLookup />}
     </div>
   );
 }

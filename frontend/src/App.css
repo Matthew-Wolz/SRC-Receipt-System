@@ -70,3 +70,18 @@ body {
   border-color: #502D7F; /* Purple border on focus */
   box-shadow: 0 0 5px rgba(80, 45, 127, 0.5); /* Purple shadow on focus */
 }
+
+.receipt-details {
+  background-color: #f8f9fa;
+  border-radius: 5px;
+  padding: 15px;
+  margin-top: 20px;
+}
+
+.receipt-details table {
+  margin-bottom: 0;
+}
+
+.receipt-details th {
+  width: 30%;
+}
