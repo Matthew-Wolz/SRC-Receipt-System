@@ -8,6 +8,7 @@ const childrenGuestPassSchema = new mongoose.Schema({
   guestPassNumber: { type: Number, required: true, unique: true },
   email: { type: String, default: null },
   product: { type: String, required: true, default: "10 Visit Children Guest Pass" },
+  amount: { type: Number, required: true, default: 25 }, // Add this field
 });
 
 module.exports = mongoose.model("ChildrenGuestPass", childrenGuestPassSchema);

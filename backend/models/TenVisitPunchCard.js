@@ -7,7 +7,7 @@ const tenVisitPunchCardSchema = new mongoose.Schema({
   staffInitials: { type: String, required: true },
   guestPassNumber: { type: Number, required: true, unique: true },
   email: { type: String, default: null },
-  product: { type: String, required: true, default: "10 Visit Punch Card" },
+  product: { type: String, required: true, default: "10 Visit Guest Pass" }, // Ensure this matches the frontend
   amount: { type: Number, required: true, default: 25 }, // Fixed amount for 10 Visit Punch Card
 });
 

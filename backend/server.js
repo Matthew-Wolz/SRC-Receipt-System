@@ -13,6 +13,8 @@ const GuestPass = require("./models/GuestPass");
 const TenVisitPunchCard = require("./models/TenVisitPunchCard");
 const AthleticTape = require("./models/AthleticTape");
 const HairTie = require("./models/HairTie");
+const ChildrenGuestPass = require("./models/ChildrenGuestPass");
+const YouthGuestPass = require("./models/YouthGuestPass");
 
 // Initialize Express app
 const app = express();
@@ -39,24 +41,33 @@ const transporter = nodemailer.createTransport({
 
 // Function to get the next guest pass number
 const getNextGuestPassNumber = async () => {
-  // Find the highest guestPassNumber in both collections
+  // Find the highest guestPassNumber in all collections
   const lastGuestPass = await GuestPass.findOne().sort({ guestPassNumber: -1 });
   const lastTenVisitPunchCard = await TenVisitPunchCard.findOne().sort({ guestPassNumber: -1 });
+  const lastChildrenGuestPass = await ChildrenGuestPass.findOne().sort({ guestPassNumber: -1 });
+  const lastYouthGuestPass = await YouthGuestPass.findOne().sort({ guestPassNumber: -1 });
 
-  // Get the highest number from both collections
+  // Get the highest number from all collections
   const highestGuestPassNumber = lastGuestPass ? lastGuestPass.guestPassNumber : 0;
   const highestTenVisitPunchCardNumber = lastTenVisitPunchCard ? lastTenVisitPunchCard.guestPassNumber : 0;
+  const highestChildrenGuestPassNumber = lastChildrenGuestPass ? lastChildrenGuestPass.guestPassNumber : 0;
+  const highestYouthGuestPassNumber = lastYouthGuestPass ? lastYouthGuestPass.guestPassNumber : 0;
 
   // Return the next available number
-  return Math.max(highestGuestPassNumber, highestTenVisitPunchCardNumber) + 1;
+  return Math.max(
+    highestGuestPassNumber,
+    highestTenVisitPunchCardNumber,
+    highestChildrenGuestPassNumber,
+    highestYouthGuestPassNumber
+  ) + 1;
 };
 
 // Submit Guest Pass Endpoint
 app.post("/api/submit-guest-pass", async (req, res) => {
-  const { sponsorName, guestName, staffInitials, email, product } = req.body;
+  const { sponsorName, guestName, staffInitials, email, product, dateOfBirth, photoId } = req.body;
   const dateSold = new Date().toLocaleDateString();
 
-  console.log("Received submission:", { sponsorName, guestName, staffInitials, email, product }); // Log the request data
+  console.log("Received submission:", { sponsorName, guestName, staffInitials, email, product, dateOfBirth, photoId }); // Log the request data
 
   try {
     // Get the next guest pass number
@@ -114,6 +125,31 @@ app.post("/api/submit-guest-pass", async (req, res) => {
           email: email || null,
           product,
           amount,
+        });
+        break;
+      case "10 Visit Children Guest Pass":
+        amount = 25; // Fixed amount for 10 Visit Children Guest Pass
+        newPass = new ChildrenGuestPass({
+          guestName,
+          photoId,
+          dateSold,
+          staffInitials,
+          guestPassNumber,
+          email: email || null,
+          product,
+        });
+        break;
+      case "Youth Guest Pass":
+        amount = 3; // Fixed amount for Youth Guest Pass
+        newPass = new YouthGuestPass({
+          sponsorName,
+          guestName,
+          dateOfBirth,
+          dateSold,
+          staffInitials,
+          guestPassNumber,
+          email: email || null,
+          product,
         });
         break;
       default:

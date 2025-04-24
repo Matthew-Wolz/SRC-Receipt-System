@@ -1,34 +1,39 @@
 import React, { useState } from "react";
-import ChildrenGuestPassForm from "./ChildrenGuestPassForm";
 import GuestPassForm from "./GuestPassForm";
-import TenVisitGuestPassForm from "./TenVisitGuestPassForm"; // Import the new component
-import ATSUPunchCardForm from "./ATSUPunchCardForm";
+import ChildrenGuestPassForm from "./ChildrenGuestPassForm";
 import YouthGuestPassForm from "./YouthGuestPassForm";
 import AthleticTapeForm from "./AthleticTapeForm";
 import HairTieForm from "./HairTieForm";
+import ATSUPunchCardForm from "./ATSUPunchCardForm";
 import PunchCardSheetForm from "./PunchCardSheetForm";
 
 function WelcomePage() {
   const [selectedProduct, setSelectedProduct] = useState("");
+  const [showForm, setShowForm] = useState(false);
+
+  const handleProductSelect = (e) => {
+    setSelectedProduct(e.target.value);
+    setShowForm(true);
+  };
 
   const renderForm = () => {
     switch (selectedProduct) {
-      case "10-visit-children":
-        return <ChildrenGuestPassForm />;
-      case "10-visit":
-        return <TenVisitGuestPassForm />; // Use the new component
-      case "atsu-punch-card":
-        return <ATSUPunchCardForm />;
-      case "daily-guest-pass":
-        return <GuestPassForm />;
-      case "youth-guest-pass":
-        return <YouthGuestPassForm />;
-      case "athletic-tape":
-        return <AthleticTapeForm />;
-      case "hair-tie":
-        return <HairTieForm />;
-      case "punch-card-sheet":
-        return <PunchCardSheetForm />;
+      case "Daily Guest Pass":
+        return <GuestPassForm onClose={() => setShowForm(false)} product={selectedProduct} />;
+      case "10 Visit Guest Pass":
+        return <GuestPassForm onClose={() => setShowForm(false)} product={selectedProduct} />;
+      case "10 Visit Children Guest Pass":
+        return <ChildrenGuestPassForm onClose={() => setShowForm(false)} product={selectedProduct} />;
+      case "Youth Guest Pass":
+        return <YouthGuestPassForm onClose={() => setShowForm(false)} product={selectedProduct} />;
+      case "Athletic Tape":
+        return <AthleticTapeForm onClose={() => setShowForm(false)} product={selectedProduct} />;
+      case "Hair Tie":
+        return <HairTieForm onClose={() => setShowForm(false)} product={selectedProduct} />;
+      case "ATSU Punch Card":
+        return <ATSUPunchCardForm onClose={() => setShowForm(false)} product={selectedProduct} />;
+      case "Punch Card Sheet":
+        return <PunchCardSheetForm onClose={() => setShowForm(false)} product={selectedProduct} />;
       default:
         return null;
     }
@@ -44,21 +49,21 @@ function WelcomePage() {
           <select
             className="form-select"
             value={selectedProduct}
-            onChange={(e) => setSelectedProduct(e.target.value)}
+            onChange={handleProductSelect}
           >
             <option value="">Choose a product</option>
-            <option value="10-visit-children">10 Visit Children Guest Pass</option>
-            <option value="10-visit">10 Visit Guest Pass</option>
-            <option value="atsu-punch-card">ATSU Punch Card</option>
-            <option value="daily-guest-pass">Daily Guest Pass</option>
-            <option value="youth-guest-pass">Youth Guest Pass</option>
-            <option value="athletic-tape">Athletic Tape</option>
-            <option value="hair-tie">Hair Tie</option>
-            <option value="punch-card-sheet">Punch Card Sheet</option>
+            <option value="Daily Guest Pass">Daily Guest Pass</option>
+            <option value="10 Visit Guest Pass">10 Visit Guest Pass</option>
+            <option value="10 Visit Children Guest Pass">10 Visit Children Guest Pass</option>
+            <option value="Youth Guest Pass">Youth Guest Pass</option>
+            <option value="Athletic Tape">Athletic Tape</option>
+            <option value="Hair Tie">Hair Tie</option>
+            <option value="ATSU Punch Card">ATSU Punch Card</option>
+            <option value="Punch Card Sheet">Punch Card Sheet</option>
           </select>
         </div>
       </div>
-      {renderForm()}
+      {showForm && renderForm()}
     </div>
   );
 }

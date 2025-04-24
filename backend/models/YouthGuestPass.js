@@ -9,6 +9,7 @@ const youthGuestPassSchema = new mongoose.Schema({
   guestPassNumber: { type: Number, required: true, unique: true },
   email: { type: String, default: null },
   product: { type: String, required: true, default: "Youth Guest Pass" },
+  amount: { type: Number, required: true, default: 3 }, // Add this field
 });
 
 // Add a pre-save hook to validate age
