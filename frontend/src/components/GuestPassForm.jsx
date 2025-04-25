@@ -1,111 +1,134 @@
 import React, { useState } from "react";
 
-function GuestPassForm({ onClose, product }) { // Add `product` as a prop
-  const [sponsorName, setSponsorName] = useState("");
-  const [guestName, setGuestName] = useState("");
-  const [staffInitials, setStaffInitials] = useState("");
-  const [emailReceipt, setEmailReceipt] = useState(false);
-  const [email, setEmail] = useState("");
+function GuestPassForm({ product, onClose }) {
+  const [formData, setFormData] = useState({
+    sponsorName: "",
+    guestName: "",
+    staffInitials: "",
+    email: "",
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const validateEmail = (email) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return email === "" || re.test(email);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
+    setSuccess("");
+    setLoading(true);
 
-    const guestPassData = {
-      sponsorName,
-      guestName,
-      staffInitials,
-      email: emailReceipt ? email : null,
-      product, // Use the `product` prop
-    };
+    // Client-side validation
+    if (!formData.guestName || !formData.staffInitials) {
+      setError("Guest Name and Staff Initials are required.");
+      setLoading(false);
+      return;
+    }
+
+    if (/[0-9]/.test(formData.guestName) || /[0-9]/.test(formData.staffInitials)) {
+      setError("Guest Name and Staff Initials cannot contain numbers.");
+      setLoading(false);
+      return;
+    }
+
+    if (!validateEmail(formData.email)) {
+      setError("Please enter a valid email address or leave it blank.");
+      setLoading(false);
+      return;
+    }
 
     try {
       const response = await fetch("http://localhost:5000/api/submit-guest-pass", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(guestPassData),
+        body: JSON.stringify({ ...formData, product }),
       });
 
-      if (response.ok) {
-        alert(`${product} submitted successfully!`); // Use the `product` prop in the success message
-        // Reset the form
-        setSponsorName("");
-        setGuestName("");
-        setStaffInitials("");
-        setEmailReceipt(false);
-        setEmail("");
-      } else {
-        alert(`Failed to submit ${product}.`);
+      const data = await response.text();
+
+      if (!response.ok) {
+        throw new Error(data || "Failed to submit guest pass.");
       }
-    } catch (error) {
-      console.error(`Error submitting ${product}:`, error);
-      alert(`An error occurred while submitting the ${product}.`);
+
+      setSuccess(data);
+      setFormData({
+        sponsorName: "",
+        guestName: "",
+        staffInitials: "",
+        email: "",
+      });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="mt-4 p-4 truman-form">
+    <div className="truman-form p-4">
+      <h3>{product}</h3>
       <form onSubmit={handleSubmit}>
         <div className="mb-3">
-          <label className="form-label truman-purple">Sponsor Name</label>
+          <label className="form-label">Sponsor Name</label>
           <input
             type="text"
             className="form-control"
-            value={sponsorName}
-            onChange={(e) => setSponsorName(e.target.value)}
+            name="sponsorName"
+            value={formData.sponsorName}
+            onChange={handleChange}
+          />
+        </div>
+        <div className="mb-3">
+          <label className="form-label">Guest Name</label>
+          <input
+            type="text"
+            className="form-control"
+            name="guestName"
+            value={formData.guestName}
+            onChange={handleChange}
             required
           />
         </div>
         <div className="mb-3">
-          <label className="form-label truman-purple">Guest Name</label>
+          <label className="form-label">Staff Initials</label>
           <input
             type="text"
             className="form-control"
-            value={guestName}
-            onChange={(e) => setGuestName(e.target.value)}
+            name="staffInitials"
+            value={formData.staffInitials}
+            onChange={handleChange}
             required
           />
         </div>
         <div className="mb-3">
-          <label className="form-label truman-purple">SRC Staff Initials</label>
+          <label className="form-label">Email (optional)</label>
           <input
-            type="text"
+            type="email"
             className="form-control"
-            value={staffInitials}
-            onChange={(e) => setStaffInitials(e.target.value)}
-            required
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
           />
         </div>
-        <div className="mb-3 form-check">
-          <input
-            type="checkbox"
-            className="form-check-input"
-            checked={emailReceipt}
-            onChange={(e) => setEmailReceipt(e.target.checked)}
-          />
-          <label className="form-check-label">Email receipt?</label>
-        </div>
-        {emailReceipt && (
-          <div className="mb-3">
-            <label className="form-label">Email Address</label>
-            <input
-              type="email"
-              className="form-control"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-        )}
+
+        {error && <div className="alert alert-danger">{error}</div>}
+        {success && <div className="alert alert-success">{success}</div>}
+
         <div className="d-flex gap-2">
-          <button type="submit" className="btn truman-button flex-grow-1">
-            Submit
+          <button type="submit" className="btn truman-button" disabled={loading}>
+            {loading ? "Submitting..." : "Submit"}
           </button>
-          <button
-            type="button"
-            className="btn btn-secondary flex-grow-1"
-            onClick={onClose}
-          >
-            Close
+          <button type="button" className="btn btn-secondary" onClick={onClose}>
+            Cancel
           </button>
         </div>
       </form>

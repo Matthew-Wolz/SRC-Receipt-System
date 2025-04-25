@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-function ReceiptLookup() {
+function ReceiptLookupPage() {
   const [receiptNumber, setReceiptNumber] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
   const [availableDates, setAvailableDates] = useState([]);
@@ -8,8 +9,9 @@ function ReceiptLookup() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [loadingDates, setLoadingDates] = useState(true);
+  const [isClearing, setIsClearing] = useState(false);
+  const navigate = useNavigate();
 
-  // Load available dates on component mount
   useEffect(() => {
     const fetchDates = async () => {
       try {
@@ -51,101 +53,164 @@ function ReceiptLookup() {
     }
   };
 
+  const handleDownloadExcel = () => {
+    window.open("http://localhost:5000/api/receipts", "_blank");
+  };
+
+  const handleClearExcel = async () => {
+    if (!window.confirm("Are you sure you want to clear all Excel data? This cannot be undone.")) {
+      return;
+    }
+
+    setIsClearing(true);
+    try {
+      const response = await fetch("http://localhost:5000/api/clear-excel", {
+        method: "POST"
+      });
+
+      if (response.ok) {
+        alert("Excel data cleared successfully");
+        setAvailableDates([]);
+        setSelectedDate('');
+        setReceiptData(null);
+      } else {
+        throw new Error("Failed to clear Excel data");
+      }
+    } catch (error) {
+      console.error("Error clearing Excel:", error);
+      alert(error.message);
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
   return (
-    <div className="mt-4 p-4 truman-form">
-      <h3 className="truman-purple mb-3">Receipt Lookup</h3>
-      
-      <form onSubmit={handleSearch} className="mb-3">
-        <div className="row g-2">
-          <div className="col-md-6">
-            <label className="form-label">Select Date</label>
-            <select
-              className="form-select"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              disabled={loadingDates}
-              required
-            >
-              {loadingDates ? (
-                <option>Loading dates...</option>
-              ) : (
-                availableDates.map(date => (
-                  <option key={date} value={date}>{date}</option>
-                ))
-              )}
-            </select>
-          </div>
-          <div className="col-md-6">
-            <label className="form-label">Receipt Number</label>
-            <div className="input-group">
-              <input
-                type="number"
-                className="form-control"
-                placeholder="Enter receipt number"
-                value={receiptNumber}
-                onChange={(e) => setReceiptNumber(e.target.value)}
-                min="1"
+    <div className="container mt-5">
+      <div className="text-center mb-4">
+        <h1 className="truman-purple">Receipt Lookup</h1>
+        
+        {/* Top row buttons - split the distance */}
+        <div className="d-flex justify-content-between mb-3">
+          <button 
+            onClick={() => navigate('/')}
+            className="btn btn-secondary flex-grow-1 me-2"
+          >
+            Back to Main Menu
+          </button>
+          <button 
+            onClick={handleDownloadExcel}
+            className="btn truman-button flex-grow-1 ms-2"
+          >
+            Download Excel Sheet
+          </button>
+        </div>
+        
+        {/* Clear Excel button - spans same distance as top row buttons */}
+        <div className="d-flex justify-content-center mb-4">
+          <button 
+            onClick={handleClearExcel}
+            className="btn btn-danger flex-grow-1"
+            disabled={isClearing}
+            style={{ maxWidth: 'calc(100% - 1rem)' }} // Adjust width to match top buttons
+          >
+            {isClearing ? "Clearing..." : "Clear Excel Data"}
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-4 p-4 truman-form">
+        <form onSubmit={handleSearch} className="mb-3">
+          <div className="row g-2">
+            <div className="col-md-6">
+              <label className="form-label">Select Date</label>
+              <select
+                className="form-select"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                disabled={loadingDates}
                 required
-              />
-              <button 
-                className="btn truman-button" 
-                type="submit"
-                disabled={loading || loadingDates}
               >
-                {loading ? 'Searching...' : 'Search'}
-              </button>
+                {loadingDates ? (
+                  <option>Loading dates...</option>
+                ) : (
+                  availableDates.map(date => (
+                    <option key={date} value={date}>{date}</option>
+                  ))
+                )}
+              </select>
+            </div>
+            <div className="col-md-6">
+              <label className="form-label">Receipt Number</label>
+              <div className="input-group">
+                <input
+                  type="number"
+                  className="form-control"
+                  placeholder="Enter receipt number"
+                  value={receiptNumber}
+                  onChange={(e) => setReceiptNumber(e.target.value)}
+                  min="1"
+                  required
+                />
+                <button 
+                  className="btn truman-button" 
+                  type="submit"
+                  disabled={loading || loadingDates}
+                >
+                  {loading ? 'Searching...' : 'Search'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      </form>
+        </form>
 
-      {error && (
-        <div className="alert alert-danger">{error}</div>
-      )}
+        {error && (
+          <div className="alert alert-danger">{error}</div>
+        )}
 
-      {receiptData && (
-        <div className="receipt-details mt-3">
-          <h4>Receipt #{receiptData["Receipt Number"]}</h4>
-          <table className="table">
-            <tbody>
-              {receiptData["Sponsor Name"] && receiptData["Sponsor Name"] !== "N/A" && (
+        {receiptData && (
+          <div className="receipt-details mt-3">
+            <h4>Receipt #{receiptData["Receipt Number"]}</h4>
+            <table className="table">
+              <tbody>
+                {receiptData["Sponsor Name"] && receiptData["Sponsor Name"] !== "N/A" && (
+                  <tr>
+                    <th>Sponsor Name</th>
+                    <td>{receiptData["Sponsor Name"]}</td>
+                  </tr>
+                )}
                 <tr>
-                  <th>Sponsor Name</th>
-                  <td>{receiptData["Sponsor Name"]}</td>
+                  <th>Guest Name</th>
+                  <td>{receiptData["Guest Name"]}</td>
                 </tr>
-              )}
-              <tr>
-                <th>Guest Name</th>
-                <td>{receiptData["Guest Name"]}</td>
-              </tr>
-              <tr>
-                <th>Date</th>
-                <td>{receiptData["Date"]}</td>
-              </tr>
-              <tr>
-                <th>Staff Initials</th>
-                <td>{receiptData["Initials"]}</td>
-              </tr>
-              <tr>
-                <th>Product</th>
-                <td>{receiptData["Item"]}</td>
-              </tr>
-              <tr>
-                <th>Amount</th>
-                <td>${receiptData["Price"]}</td>
-              </tr>
-              {receiptData["Email"] && receiptData["Email"] !== "N/A" && (
                 <tr>
-                  <th>Email</th>
-                  <td>{receiptData["Email"]}</td>
+                  <th>Date</th>
+                  <td>{receiptData["Date"]}</td>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+                <tr>
+                  <th>Staff Initials</th>
+                  <td>{receiptData["Initials"]}</td>
+                </tr>
+                <tr>
+                  <th>Product</th>
+                  <td>{receiptData["Item"]}</td>
+                </tr>
+                <tr>
+                  <th>Amount</th>
+                  <td>${receiptData["Price"]}</td>
+                </tr>
+                {receiptData["Email"] && receiptData["Email"] !== "N/A" && (
+                  <tr>
+                    <th>Email</th>
+                    <td>{receiptData["Email"]}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-export default ReceiptLookup;
+export default ReceiptLookupPage;

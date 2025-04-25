@@ -1,13 +1,29 @@
 import React, { useState } from "react";
 
 function YouthGuestPassForm({ onClose, product }) {
-  const [sponsorName, setSponsorName] = useState("");
-  const [guestName, setGuestName] = useState("");
-  const [dateOfBirth, setDateOfBirth] = useState("");
-  const [staffInitials, setStaffInitials] = useState("");
-  const [emailReceipt, setEmailReceipt] = useState(false);
-  const [email, setEmail] = useState("");
+  const [formData, setFormData] = useState({
+    sponsorName: "",
+    guestName: "",
+    dateOfBirth: "",
+    staffInitials: "",
+    emailReceipt: false,
+    email: "",
+  });
   const [isEligible, setIsEligible] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const handleChange = (e) => {
+    const { name, type, value, checked } = e.target;
+    setFormData({
+      ...formData,
+      [name]: type === "checkbox" ? checked : value,
+    });
+    if (name === "dateOfBirth") {
+      validateAge(value);
+    }
+  };
 
   const validateAge = (dob) => {
     if (!dob) {
@@ -24,20 +40,48 @@ function YouthGuestPassForm({ onClose, product }) {
     setIsEligible(age <= 14);
   };
 
+  const validateForm = () => {
+    if (!formData.sponsorName || !formData.guestName || !formData.dateOfBirth || !formData.staffInitials) {
+      setError("All fields except email are required.");
+      return false;
+    }
+    if (
+      /[0-9]/.test(formData.sponsorName) ||
+      /[0-9]/.test(formData.guestName) ||
+      /[0-9]/.test(formData.staffInitials)
+    ) {
+      setError("Sponsor Name, Guest Name, and Staff Initials cannot contain numbers.");
+      return false;
+    }
+    if (!isEligible) {
+      setError("Youth Guest Pass is only available for guests 14 or younger.");
+      return false;
+    }
+    if (formData.emailReceipt && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      setError("Please enter a valid email address.");
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!isEligible) {
-      alert("Youth Guest Pass is only available for guests under 14 years old");
+    setError("");
+    setSuccess("");
+    setLoading(true);
+
+    if (!validateForm()) {
+      setLoading(false);
       return;
     }
 
     const guestPassData = {
-      sponsorName,
-      guestName,
-      dateOfBirth,
-      staffInitials,
-      email: emailReceipt ? email : null,
-      product: "Youth Guest Pass",
+      sponsorName: formData.sponsorName,
+      guestName: formData.guestName,
+      dateOfBirth: formData.dateOfBirth,
+      staffInitials: formData.staffInitials,
+      email: formData.emailReceipt ? formData.email : null,
+      product,
     };
 
     try {
@@ -47,77 +91,96 @@ function YouthGuestPassForm({ onClose, product }) {
         body: JSON.stringify(guestPassData),
       });
 
-      if (response.ok) {
-        alert("Youth Guest Pass submitted successfully!");
-        setSponsorName("");
-        setGuestName("");
-        setDateOfBirth("");
-        setStaffInitials("");
-        setEmailReceipt(false);
-        setEmail("");
-        if (onClose) onClose();
-      } else {
-        const error = await response.text();
-        alert(`Failed to submit Youth Guest Pass: ${error}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to submit Youth Guest Pass.");
       }
-    } catch (error) {
-      console.error("Error submitting Youth Guest Pass:", error);
-      alert("An error occurred while submitting the Youth Guest Pass.");
+
+      const data = await response.text();
+
+      setSuccess("Youth Guest Pass submitted successfully!");
+      setFormData({
+        sponsorName: "",
+        guestName: "",
+        dateOfBirth: "",
+        staffInitials: "",
+        emailReceipt: false,
+        email: "",
+      });
+      setIsEligible(false);
+
+      setTimeout(() => {
+        if (onClose) {
+          try {
+            onClose();
+          } catch (err) {
+            console.error("Error in onClose:", err);
+            setError("Form submitted, but there was an issue closing the form.");
+          }
+        }
+      }, 2000);
+    } catch (err) {
+      console.error("Error submitting Youth Guest Pass:", err);
+      setError(err.message || "An unexpected error occurred while submitting the form.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="mt-4 p-4 truman-form">
+    <div className="truman-form p-4">
+      <h3>{product}</h3>
       <form onSubmit={handleSubmit}>
         <div className="mb-3">
-          <label className="form-label truman-purple">Sponsor Name</label>
+          <label className="form-label">Sponsor Name</label>
           <input
             type="text"
             className="form-control"
-            value={sponsorName}
-            onChange={(e) => setSponsorName(e.target.value)}
+            name="sponsorName"
+            value={formData.sponsorName}
+            onChange={handleChange}
             required
             pattern="^[A-Za-z ]+$"
             title="No numbers allowed"
           />
         </div>
         <div className="mb-3">
-          <label className="form-label truman-purple">Guest Name</label>
+          <label className="form-label">Guest Name</label>
           <input
             type="text"
             className="form-control"
-            value={guestName}
-            onChange={(e) => setGuestName(e.target.value)}
+            name="guestName"
+            value={formData.guestName}
+            onChange={handleChange}
             required
             pattern="^[A-Za-z ]+$"
             title="No numbers allowed"
           />
         </div>
         <div className="mb-3">
-          <label className="form-label truman-purple">Guest Date of Birth</label>
+          <label className="form-label">Guest Date of Birth</label>
           <input
             type="date"
             className="form-control"
-            value={dateOfBirth}
-            onChange={(e) => {
-              setDateOfBirth(e.target.value);
-              validateAge(e.target.value);
-            }}
+            name="dateOfBirth"
+            value={formData.dateOfBirth}
+            onChange={handleChange}
             required
           />
-          {dateOfBirth && (
+          {formData.dateOfBirth && (
             <div className={`mt-2 ${isEligible ? "text-success" : "text-danger"}`}>
               {isEligible ? "Eligible for Youth Guest Pass" : "Not eligible - must be 14 or younger"}
             </div>
           )}
         </div>
         <div className="mb-3">
-          <label className="form-label truman-purple">SRC Staff Initials</label>
+          <label className="form-label">Staff Initials</label>
           <input
             type="text"
             className="form-control"
-            value={staffInitials}
-            onChange={(e) => setStaffInitials(e.target.value)}
+            name="staffInitials"
+            value={formData.staffInitials}
+            onChange={handleChange}
             required
             pattern="^[A-Za-z ]+$"
             title="No numbers allowed"
@@ -127,40 +190,40 @@ function YouthGuestPassForm({ onClose, product }) {
           <input
             type="checkbox"
             className="form-check-input"
-            checked={emailReceipt}
-            onChange={(e) => setEmailReceipt(e.target.checked)}
+            name="emailReceipt"
+            checked={formData.emailReceipt}
+            onChange={handleChange}
           />
           <label className="form-check-label">Email receipt?</label>
         </div>
-        {emailReceipt && (
+        {formData.emailReceipt && (
           <div className="mb-3">
             <label className="form-label">Email Address</label>
             <input
               type="email"
               className="form-control"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required={emailReceipt}
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              required={formData.emailReceipt}
             />
           </div>
         )}
+
+        {error && <div className="alert alert-danger">{error}</div>}
+        {success && <div className="alert alert-success">{success}</div>}
+
         <div className="d-flex gap-2">
-          <button 
-            type="submit" 
-            className="btn truman-button flex-grow-1"
-            disabled={!isEligible}
+          <button
+            type="submit"
+            className="btn truman-button"
+            disabled={loading || !isEligible}
           >
-            Submit
+            {loading ? "Submitting..." : "Submit"}
           </button>
-          {onClose && (
-            <button
-              type="button"
-              className="btn btn-secondary flex-grow-1"
-              onClick={onClose}
-            >
-              Close
-            </button>
-          )}
+          <button type="button" className="btn btn-secondary" onClick={onClose}>
+            Cancel
+          </button>
         </div>
       </form>
     </div>

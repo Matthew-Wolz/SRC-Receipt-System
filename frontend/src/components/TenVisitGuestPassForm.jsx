@@ -1,21 +1,63 @@
 import React, { useState } from "react";
 
 function TenVisitGuestPassForm({ onClose }) {
-  const [sponsorName, setSponsorName] = useState("");
-  const [guestName, setGuestName] = useState("");
-  const [staffInitials, setStaffInitials] = useState("");
-  const [emailReceipt, setEmailReceipt] = useState(false);
-  const [email, setEmail] = useState("");
+  const [formData, setFormData] = useState({
+    sponsorName: "",
+    guestName: "",
+    staffInitials: "",
+    emailReceipt: false,
+    email: "",
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const product = "10 Visit Guest Pass";
+
+  const handleChange = (e) => {
+    const { name, type, value, checked } = e.target;
+    setFormData({
+      ...formData,
+      [name]: type === "checkbox" ? checked : value,
+    });
+  };
+
+  const validateForm = () => {
+    if (!formData.sponsorName || !formData.guestName || !formData.staffInitials) {
+      setError("Sponsor Name, Guest Name, and Staff Initials are required.");
+      return false;
+    }
+    if (
+      /[0-9]/.test(formData.sponsorName) ||
+      /[0-9]/.test(formData.guestName) ||
+      /[0-9]/.test(formData.staffInitials)
+    ) {
+      setError("Sponsor Name, Guest Name, and Staff Initials cannot contain numbers.");
+      return false;
+    }
+    if (formData.emailReceipt && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      setError("Please enter a valid email address.");
+      return false;
+    }
+    return true;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
+    setSuccess("");
+    setLoading(true);
+
+    if (!validateForm()) {
+      setLoading(false);
+      return;
+    }
 
     const guestPassData = {
-      sponsorName,
-      guestName,
-      staffInitials,
-      email: emailReceipt ? email : null,
-      product: "10 Visit Guest Pass", // Hardcoded for this form
+      sponsorName: formData.sponsorName,
+      guestName: formData.guestName,
+      staffInitials: formData.staffInitials,
+      email: formData.emailReceipt ? formData.email : null,
+      product,
     };
 
     try {
@@ -25,53 +67,61 @@ function TenVisitGuestPassForm({ onClose }) {
         body: JSON.stringify(guestPassData),
       });
 
-      if (response.ok) {
-        alert("10 Visit Guest Pass submitted successfully!");
-        // Reset the form
-        setSponsorName("");
-        setGuestName("");
-        setStaffInitials("");
-        setEmailReceipt(false);
-        setEmail("");
-      } else {
-        alert("Failed to submit 10 Visit Guest Pass.");
+      const data = await response.text();
+
+      if (!response.ok) {
+        throw new Error(data || "Failed to submit 10 Visit Guest Pass.");
       }
-    } catch (error) {
-      console.error("Error submitting 10 Visit Guest Pass:", error);
-      alert("An error occurred while submitting the 10 Visit Guest Pass.");
+
+      setSuccess("10 Visit Guest Pass submitted successfully!");
+      setFormData({
+        sponsorName: "",
+        guestName: "",
+        staffInitials: "",
+        emailReceipt: false,
+        email: "",
+      });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="mt-4 p-4 truman-form">
+    <div className="truman-form p-4">
+      <h3>{product}</h3>
       <form onSubmit={handleSubmit}>
         <div className="mb-3">
-          <label className="form-label truman-purple">Sponsor Name</label>
+          <label className="form-label">Sponsor Name</label>
           <input
             type="text"
             className="form-control"
-            value={sponsorName}
-            onChange={(e) => setSponsorName(e.target.value)}
+            name="sponsorName"
+            value={formData.sponsorName}
+            onChange={handleChange}
             required
           />
         </div>
         <div className="mb-3">
-          <label className="form-label truman-purple">Guest Name</label>
+          <label className="form-label">Guest Name</label>
           <input
             type="text"
             className="form-control"
-            value={guestName}
-            onChange={(e) => setGuestName(e.target.value)}
+            name="guestName"
+            value={formData.guestName}
+            onChange={handleChange}
             required
           />
         </div>
         <div className="mb-3">
-          <label className="form-label truman-purple">SRC Staff Initials</label>
+          <label className="form-label">Staff Initials</label>
           <input
             type="text"
             className="form-control"
-            value={staffInitials}
-            onChange={(e) => setStaffInitials(e.target.value)}
+            name="staffInitials"
+            value={formData.staffInitials}
+            onChange={handleChange}
             required
           />
         </div>
@@ -79,33 +129,35 @@ function TenVisitGuestPassForm({ onClose }) {
           <input
             type="checkbox"
             className="form-check-input"
-            checked={emailReceipt}
-            onChange={(e) => setEmailReceipt(e.target.checked)}
+            name="emailReceipt"
+            checked={formData.emailReceipt}
+            onChange={handleChange}
           />
           <label className="form-check-label">Email receipt?</label>
         </div>
-        {emailReceipt && (
+        {formData.emailReceipt && (
           <div className="mb-3">
             <label className="form-label">Email Address</label>
             <input
               type="email"
               className="form-control"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
               required
             />
           </div>
         )}
+
+        {error && <div className="alert alert-danger">{error}</div>}
+        {success && <div className="alert alert-success">{success}</div>}
+
         <div className="d-flex gap-2">
-          <button type="submit" className="btn truman-button flex-grow-1">
-            Submit
+          <button type="submit" className="btn truman-button" disabled={loading}>
+            {loading ? "Submitting..." : "Submit"}
           </button>
-          <button
-            type="button"
-            className="btn btn-secondary flex-grow-1"
-            onClick={onClose}
-          >
-            Close
+          <button type="button" className="btn btn-secondary" onClick={onClose}>
+            Cancel
           </button>
         </div>
       </form>

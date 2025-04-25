@@ -1,13 +1,15 @@
-import React from "react";
-import WelcomePage from "./components/WelcomePage";
-import "bootstrap/dist/css/bootstrap.min.css";
-import "./App.css";
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import WelcomePage from './components/WelcomePage';
+import ReceiptLookupPage from './components/ReceiptLookup';
 
 function App() {
   return (
-    <div className="container mt-5">
-      <WelcomePage />
-    </div>
+    <Router>
+      <Routes>
+        <Route path="/" element={<WelcomePage />} />
+        <Route path="/receipt-lookup" element={<ReceiptLookupPage />} />
+      </Routes>
+    </Router>
   );
 }
 

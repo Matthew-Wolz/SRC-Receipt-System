@@ -23,7 +23,7 @@ const app = express();
 const port = 5000;
 
 // Middleware
-app.use(cors());
+app.use(cors({ origin: "http://localhost:5173" }));
 app.use(express.json());
 
 // Connect to MongoDB
@@ -47,19 +47,33 @@ const headers = ["Sponsor Name", "Guest Name", "Date", "Initials", "Receipt Numb
 
 // Create or load Excel file
 const initializeExcelFile = () => {
-  if (fs.existsSync(excelFilePath)) {
-    const workbook = xlsx.readFile(excelFilePath);
-    // Remove Sheet1 if it exists
-    if (workbook.SheetNames.includes("Sheet1")) {
-      delete workbook.Sheets["Sheet1"];
-      const sheetIndex = workbook.SheetNames.indexOf("Sheet1");
-      workbook.SheetNames.splice(sheetIndex, 1);
-      xlsx.writeFile(workbook, excelFilePath);
+  try {
+    let workbook;
+    const today = new Date();
+    const defaultSheetName = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+    if (fs.existsSync(excelFilePath)) {
+      workbook = xlsx.readFile(excelFilePath);
+      // Remove Sheet1 if it exists
+      if (workbook.SheetNames.includes("Sheet1")) {
+        delete workbook.Sheets["Sheet1"];
+        const sheetIndex = workbook.SheetNames.indexOf("Sheet1");
+        workbook.SheetNames.splice(sheetIndex, 1);
+      }
+    } else {
+      workbook = xlsx.utils.book_new();
     }
-  } else {
-    // Create new empty workbook
-    const workbook = xlsx.utils.book_new();
+
+    // Ensure the workbook has at least one sheet
+    if (workbook.SheetNames.length === 0) {
+      const defaultWorksheet = xlsx.utils.aoa_to_sheet([headers]);
+      xlsx.utils.book_append_sheet(workbook, defaultWorksheet, defaultSheetName);
+    }
+
     xlsx.writeFile(workbook, excelFilePath);
+  } catch (error) {
+    console.error("Error initializing Excel file:", error);
+    throw new Error("Failed to initialize Excel file");
   }
 };
 
@@ -67,28 +81,32 @@ initializeExcelFile();
 
 // Function to get the next guest pass number
 const getNextGuestPassNumber = async () => {
-  const lastGuestPass = await GuestPass.findOne().sort({ guestPassNumber: -1 });
-  const lastTenVisitPunchCard = await TenVisitPunchCard.findOne().sort({ guestPassNumber: -1 });
-  const lastChildrenGuestPass = await ChildrenGuestPass.findOne().sort({ guestPassNumber: -1 });
-  const lastYouthGuestPass = await YouthGuestPass.findOne().sort({ guestPassNumber: -1 });
+  try {
+    const lastGuestPass = await GuestPass.findOne().sort({ guestPassNumber: -1 });
+    const lastTenVisitPunchCard = await TenVisitPunchCard.findOne().sort({ guestPassNumber: -1 });
+    const lastChildrenGuestPass = await ChildrenGuestPass.findOne().sort({ guestPassNumber: -1 });
+    const lastYouthGuestPass = await YouthGuestPass.findOne().sort({ guestPassNumber: -1 });
 
-  const highestGuestPassNumber = lastGuestPass ? lastGuestPass.guestPassNumber : 0;
-  const highestTenVisitPunchCardNumber = lastTenVisitPunchCard ? lastTenVisitPunchCard.guestPassNumber : 0;
-  const highestChildrenGuestPassNumber = lastChildrenGuestPass ? lastChildrenGuestPass.guestPassNumber : 0;
-  const highestYouthGuestPassNumber = lastYouthGuestPass ? lastYouthGuestPass.guestPassNumber : 0;
+    const highestGuestPassNumber = lastGuestPass ? lastGuestPass.guestPassNumber : 0;
+    const highestTenVisitPunchCardNumber = lastTenVisitPunchCard ? lastTenVisitPunchCard.guestPassNumber : 0;
+    const highestChildrenGuestPassNumber = lastChildrenGuestPass ? lastChildrenGuestPass.guestPassNumber : 0;
+    const highestYouthGuestPassNumber = lastYouthGuestPass ? lastYouthGuestPass.guestPassNumber : 0;
 
-  return Math.max(
-    highestGuestPassNumber,
-    highestTenVisitPunchCardNumber,
-    highestChildrenGuestPassNumber,
-    highestYouthGuestPassNumber
-  ) + 1;
+    return Math.max(
+      highestGuestPassNumber,
+      highestTenVisitPunchCardNumber,
+      highestChildrenGuestPassNumber,
+      highestYouthGuestPassNumber
+    ) + 1;
+  } catch (error) {
+    console.error("Error getting next guest pass number:", error);
+    throw new Error("Failed to generate guest pass number");
+  }
 };
 
 // Function to add data to Excel sheet with daily tabs
 const addToExcel = async (data) => {
   try {
-    // Format date as YYYY-MM-DD for sheet name
     const today = new Date();
     const sheetName = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     
@@ -99,27 +117,34 @@ const addToExcel = async (data) => {
       workbook = xlsx.utils.book_new();
     }
 
-    // Check if sheet for today exists
     if (!workbook.SheetNames.includes(sheetName)) {
       const newWorksheet = xlsx.utils.aoa_to_sheet([headers]);
       xlsx.utils.book_append_sheet(workbook, newWorksheet, sheetName);
     }
     
-    // Add data to today's sheet
     const worksheet = workbook.Sheets[sheetName];
     xlsx.utils.sheet_add_aoa(worksheet, [data], { origin: -1 });
     xlsx.writeFile(workbook, excelFilePath);
   } catch (error) {
     console.error("Error adding to Excel:", error);
-    throw error;
+    throw new Error("Failed to write to Excel file");
   }
 };
 
-// Clear Excel data (keeps headers)
+// Health check endpoint
+app.get("/api/health", (req, res) => {
+  res.status(200).send("Server is running");
+});
+
+// Clear Excel data
 app.post("/api/clear-excel", (req, res) => {
   try {
-    const workbook = xlsx.utils.book_new(); // Creates empty workbook
-    xlsx.writeFile(workbook, excelFilePath); // Saves without any sheets
+    const workbook = xlsx.utils.book_new();
+    const today = new Date();
+    const sheetName = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const newWorksheet = xlsx.utils.aoa_to_sheet([headers]);
+    xlsx.utils.book_append_sheet(workbook, newWorksheet, sheetName);
+    xlsx.writeFile(workbook, excelFilePath);
     res.status(200).send("Excel data cleared successfully");
   } catch (error) {
     console.error("Error clearing Excel:", error);
@@ -133,15 +158,27 @@ app.post("/api/submit-guest-pass", async (req, res) => {
   const today = new Date();
   const dateSold = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-  if (!guestName || !staffInitials || /[0-9]/.test(guestName) || /[0-9]/.test(staffInitials)) {
-    return res.status(400).send("Invalid input data");
+  // Input validation
+  if (!guestName || !staffInitials) {
+    return res.status(400).send("Guest Name and Staff Initials are required");
+  }
+
+  if (/[0-9]/.test(guestName) || /[0-9]/.test(staffInitials)) {
+    return res.status(400).send("Guest Name and Staff Initials cannot contain numbers");
+  }
+
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).send("Invalid email address");
   }
 
   try {
+    // Generate guest pass number
     const guestPassNumber = await getNextGuestPassNumber();
+
     let newPass;
     let amount;
 
+    // Create new pass based on product type
     switch (product) {
       case "Daily Guest Pass":
         amount = 3;
@@ -168,8 +205,18 @@ app.post("/api/submit-guest-pass", async (req, res) => {
         return res.status(400).send("Invalid product type");
     }
 
-    await newPass.save();
+    // Save to MongoDB
+    try {
+      await newPass.save();
+    } catch (error) {
+      console.error("MongoDB save error:", error);
+      if (error.code === 11000) {
+        return res.status(400).send("Duplicate guest pass number");
+      }
+      throw new Error("Failed to save guest pass to database");
+    }
 
+    // Add to Excel
     const excelData = [
       sponsorName || "N/A",
       guestName,
@@ -182,6 +229,7 @@ app.post("/api/submit-guest-pass", async (req, res) => {
     ];
     await addToExcel(excelData);
 
+    // Send email if provided
     if (email) {
       const mailOptions = {
         from: process.env.EMAIL_USER,
@@ -189,13 +237,18 @@ app.post("/api/submit-guest-pass", async (req, res) => {
         subject: "Guest Pass Receipt",
         text: `Sponsor Name: ${sponsorName}\nGuest Name: ${guestName}\nDate Sold: ${dateSold}\nSold By: ${staffInitials}\nGuest Pass Number: ${guestPassNumber}\nProduct: ${product}\nAmount: $${amount}`,
       };
-      await transporter.sendMail(mailOptions);
+      try {
+        await transporter.sendMail(mailOptions);
+      } catch (error) {
+        console.error("Email sending error:", error);
+        throw new Error("Failed to send receipt email");
+      }
     }
 
     res.status(200).send("Guest pass submitted successfully!");
   } catch (error) {
     console.error("Error submitting guest pass:", error);
-    res.status(500).send("Failed to submit guest pass.");
+    res.status(500).send(error.message || "Failed to submit guest pass");
   }
 });
 
@@ -216,7 +269,6 @@ app.get("/api/receipt/:date/:receiptNumber", async (req, res) => {
     const { date, receiptNumber } = req.params;
     const numReceipt = parseInt(receiptNumber);
     
-    // Search the specific date sheet
     const workbook = xlsx.readFile(excelFilePath);
     if (!workbook.SheetNames.includes(date)) {
       return res.status(404).send("Date not found");
@@ -237,39 +289,20 @@ app.get("/api/receipt/:date/:receiptNumber", async (req, res) => {
   }
 });
 
-// Fetch receipt from database by receipt number
-app.get("/api/receipt/:receiptNumber", async (req, res) => {
-  try {
-    const receiptNumber = parseInt(req.params.receiptNumber);
-    
-    const guestPass = await GuestPass.findOne({ guestPassNumber: receiptNumber });
-    if (guestPass) return res.json(guestPass);
-
-    const tenVisitPass = await TenVisitPunchCard.findOne({ guestPassNumber: receiptNumber });
-    if (tenVisitPass) return res.json(tenVisitPass);
-
-    const childrenPass = await ChildrenGuestPass.findOne({ guestPassNumber: receiptNumber });
-    if (childrenPass) return res.json(childrenPass);
-
-    const youthPass = await YouthGuestPass.findOne({ guestPassNumber: receiptNumber });
-    if (youthPass) return res.json(youthPass);
-
-    res.status(404).send("Receipt not found");
-  } catch (error) {
-    console.error("Error fetching receipt:", error);
-    res.status(500).send("Error fetching receipt data");
-  }
-});
-
-// Serve Excel file (with overwrite)
+// Serve Excel file (FIXED VERSION - no longer overwrites existing data)
 app.get("/api/receipts", (req, res) => {
-  // Delete existing file if it exists to prevent (1) duplicates
-  if (fs.existsSync(excelFilePath)) {
-    fs.unlinkSync(excelFilePath);
+  try {
+    // Ensure file exists
+    if (!fs.existsSync(excelFilePath)) {
+      initializeExcelFile();
+    }
+    
+    // Just serve the existing file without recreating it
+    res.download(excelFilePath, "receipts.xlsx");
+  } catch (error) {
+    console.error("Error serving Excel file:", error);
+    res.status(500).send("Failed to serve Excel file");
   }
-  // Create fresh file
-  initializeExcelFile();
-  res.download(excelFilePath, "receipts.xlsx");
 });
 
 // Start the server
