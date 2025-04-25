@@ -31,3 +31,7 @@ frontend/env
 backend/env
 
 backend/receipts.xlsx
+
+
+run_app.bat
+run_hidden.vbs

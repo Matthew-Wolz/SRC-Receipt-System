@@ -12,7 +12,11 @@ function LockerRentalForm({ onClose, product }) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const durations = ["1 Semester ($15)", "2 Semesters ($25)", "1 Year ($40)"];
+  const durations = [
+    { value: "1 Semester", label: "1 Semester ($15)" },
+    { value: "2 Semesters", label: "2 Semesters ($25)" },
+    { value: "1 Year", label: "1 Year ($40)" },
+  ];
 
   const handleChange = (e) => {
     const { name, type, value, checked } = e.target;
@@ -121,8 +125,8 @@ function LockerRentalForm({ onClose, product }) {
             required
           >
             <option value="">Select Duration</option>
-            {durations.map(duration => (
-              <option key={duration} value={duration}>{duration}</option>
+            {durations.map(({ value, label }) => (
+              <option key={value} value={value}>{label}</option>
             ))}
           </select>
         </div>

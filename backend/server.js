@@ -20,6 +20,7 @@ const ChildrenGuestPass = require("./models/ChildrenGuestPass");
 const YouthGuestPass = require("./models/YouthGuestPass");
 const GuestMembership = require("./models/GuestMembership");
 const LockerRental = require("./models/LockerRental");
+const ATSUPunchCard = require("./models/ATSUPunchCard");
 
 // Initialize Express app
 const app = express();
@@ -91,6 +92,9 @@ const getNextGuestPassNumber = async () => {
     const lastYouthGuestPass = await YouthGuestPass.findOne().sort({ guestPassNumber: -1 });
     const lastGuestMembership = await GuestMembership.findOne().sort({ guestPassNumber: -1 });
     const lastLockerRental = await LockerRental.findOne().sort({ guestPassNumber: -1 });
+    const lastAthleticTape = await AthleticTape.findOne().sort({ guestPassNumber: -1 });
+    const lastHairTie = await HairTie.findOne().sort({ guestPassNumber: -1 });
+    const lastATSUPunchCard = await ATSUPunchCard.findOne().sort({ guestPassNumber: -1 });
 
     const highestGuestPassNumber = lastGuestPass ? lastGuestPass.guestPassNumber : 0;
     const highestTenVisitPunchCardNumber = lastTenVisitPunchCard ? lastTenVisitPunchCard.guestPassNumber : 0;
@@ -98,6 +102,9 @@ const getNextGuestPassNumber = async () => {
     const highestYouthGuestPassNumber = lastYouthGuestPass ? lastYouthGuestPass.guestPassNumber : 0;
     const highestGuestMembershipNumber = lastGuestMembership ? lastGuestMembership.guestPassNumber : 0;
     const highestLockerRentalNumber = lastLockerRental ? lastLockerRental.guestPassNumber : 0;
+    const highestAthleticTapeNumber = lastAthleticTape ? lastAthleticTape.guestPassNumber : 0;
+    const highestHairTieNumber = lastHairTie ? lastHairTie.guestPassNumber : 0;
+    const highestATSUPunchCardNumber = lastATSUPunchCard ? lastATSUPunchCard.guestPassNumber : 0;
 
     return Math.max(
       highestGuestPassNumber,
@@ -105,7 +112,10 @@ const getNextGuestPassNumber = async () => {
       highestChildrenGuestPassNumber,
       highestYouthGuestPassNumber,
       highestGuestMembershipNumber,
-      highestLockerRentalNumber
+      highestLockerRentalNumber,
+      highestAthleticTapeNumber,
+      highestHairTieNumber,
+      highestATSUPunchCardNumber
     ) + 1;
   } catch (error) {
     console.error("Error getting next guest pass number:", error);
@@ -255,7 +265,12 @@ app.post("/api/submit-guest-pass", async (req, res) => {
         if (!duration) {
           return res.status(400).send("Duration is required");
         }
-        switch (duration) {
+        const validDurations = ["1 Semester", "2 Semesters", "1 Year"];
+        const cleanedDuration = duration.trim();
+        if (!validDurations.includes(cleanedDuration)) {
+          return res.status(400).send("Invalid duration");
+        }
+        switch (cleanedDuration) {
           case "1 Semester":
             amount = 15;
             break;
@@ -265,10 +280,8 @@ app.post("/api/submit-guest-pass", async (req, res) => {
           case "1 Year":
             amount = 40;
             break;
-          default:
-            return res.status(400).send("Invalid duration");
         }
-        productName = `Locker Rental - ${duration}`;
+        productName = `Locker Rental - ${cleanedDuration}`;
         newPass = new LockerRental({ guestName, dateSold, timestamp, staffInitials, guestPassNumber, email, product: productName, amount });
         break;
       default:
@@ -324,6 +337,246 @@ app.post("/api/submit-guest-pass", async (req, res) => {
   } catch (error) {
     console.error("Error submitting guest pass:", error);
     res.status(500).send("Failed to submit guest pass");
+  }
+});
+
+// Submit Athletic Tape Endpoint
+app.post("/api/submit-athletic-tape", async (req, res) => {
+  const { guestName, staffInitials, email, product } = req.body;
+  const today = new Date();
+  const dateSold = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const timestamp = today.toLocaleTimeString();
+
+  // Input validation
+  if (!guestName || !staffInitials) {
+    return res.status(400).send("Guest Name and Staff Initials are required");
+  }
+
+  if (/[0-9]/.test(guestName) || /[0-9]/.test(staffInitials)) {
+    return res.status(400).send("Guest Name and Staff Initials cannot contain numbers");
+  }
+
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).send("Invalid email address");
+  }
+
+  try {
+    // Generate guest pass number
+    const guestPassNumber = await getNextGuestPassNumber();
+
+    // Create new Athletic Tape record
+    const newAthleticTape = new AthleticTape({
+      guestName,
+      dateSold,
+      staffInitials,
+      guestPassNumber,
+      email: email || null,
+      product,
+      amount: 1, // Matches schema default
+    });
+
+    // Save to MongoDB
+    await newAthleticTape.save();
+
+    // Add to Excel
+    const excelData = [
+      "N/A", // Sponsor Name
+      guestName,
+      dateSold,
+      timestamp,
+      staffInitials,
+      guestPassNumber,
+      email || "N/A",
+      product,
+      1, // Matches schema default
+    ];
+    await addToExcel(excelData);
+
+    // Send email if provided
+    if (email) {
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: "Athletic Tape Receipt",
+        text: `Guest Name: ${guestName}\nDate Sold: ${dateSold}\nTimestamp: ${timestamp}\nSold By: ${staffInitials}\nReceipt Number: ${guestPassNumber}\nProduct: ${product}\nAmount: $1`,
+      };
+
+      try {
+        const info = await transporter.sendMail(mailOptions);
+        console.log(`Email sent to: ${email}`, info.response);
+      } catch (error) {
+        console.error("Email sending error:", error);
+        return res.status(500).send("Athletic Tape submitted but failed to send email notification");
+      }
+    }
+
+    res.status(200).send("Athletic Tape submitted successfully!");
+  } catch (error) {
+    console.error("Error submitting Athletic Tape:", error);
+    if (error.code === 11000) {
+      return res.status(400).send("Duplicate guest pass number");
+    }
+    res.status(500).send("Failed to submit Athletic Tape");
+  }
+});
+
+// Submit Hair Tie Endpoint
+app.post("/api/submit-hair-tie", async (req, res) => {
+  const { guestName, staffInitials, email, product } = req.body;
+  const today = new Date();
+  const dateSold = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const timestamp = today.toLocaleTimeString();
+
+  // Input validation
+  if (!guestName || !staffInitials) {
+    return res.status(400).send("Guest Name and Staff Initials are required");
+  }
+
+  if (/[0-9]/.test(guestName) || /[0-9]/.test(staffInitials)) {
+    return res.status(400).send("Guest Name and Staff Initials cannot contain numbers");
+  }
+
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).send("Invalid email address");
+  }
+
+  try {
+    // Generate guest pass number
+    const guestPassNumber = await getNextGuestPassNumber();
+
+    // Create new Hair Tie record
+    const newHairTie = new HairTie({
+      guestName,
+      dateSold,
+      staffInitials,
+      guestPassNumber,
+      email: email || null,
+      product,
+      amount: 0.25, // Matches schema default
+    });
+
+    // Save to MongoDB
+    await newHairTie.save();
+
+    // Add to Excel
+    const excelData = [
+      "N/A", // Sponsor Name
+      guestName,
+      dateSold,
+      timestamp,
+      staffInitials,
+      guestPassNumber,
+      email || "N/A",
+      product,
+      0.25, // Matches schema default
+    ];
+    await addToExcel(excelData);
+
+    // Send email if provided
+    if (email) {
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: "Hair Tie Receipt",
+        text: `Guest Name: ${guestName}\nDate Sold: ${dateSold}\nTimestamp: ${timestamp}\nSold By: ${staffInitials}\nReceipt Number: ${guestPassNumber}\nProduct: ${product}\nAmount: $0.25`,
+      };
+
+      try {
+        const info = await transporter.sendMail(mailOptions);
+        console.log(`Email sent to: ${email}`, info.response);
+      } catch (error) {
+        console.error("Email sending error:", error);
+        return res.status(500).send("Hair Tie submitted but failed to send email notification");
+      }
+    }
+
+    res.status(200).send("Hair Tie submitted successfully!");
+  } catch (error) {
+    console.error("Error submitting Hair Tie:", error);
+    if (error.code === 11000) {
+      return res.status(400).send("Duplicate guest pass number");
+    }
+    res.status(500).send("Failed to submit Hair Tie");
+  }
+});
+
+// Submit ATSU Punch Card Endpoint
+app.post("/api/submit-atsu-punch-card", async (req, res) => {
+  const { guestName, staffInitials, email, product } = req.body;
+  const today = new Date();
+  const dateSold = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const timestamp = today.toLocaleTimeString();
+
+  // Input validation
+  if (!guestName || !staffInitials) {
+    return res.status(400).send("Guest Name and Staff Initials are required");
+  }
+
+  if (/[0-9]/.test(guestName) || /[0-9]/.test(staffInitials)) {
+    return res.status(400).send("Guest Name and Staff Initials cannot contain numbers");
+  }
+
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).send("Invalid email address");
+  }
+
+  try {
+    // Generate guest pass number
+    const guestPassNumber = await getNextGuestPassNumber();
+
+    // Create new ATSU Punch Card record
+    const newATSUPunchCard = new ATSUPunchCard({
+      guestName,
+      dateSold,
+      staffInitials,
+      guestPassNumber,
+      email: email || null,
+      product,
+      amount: 100, // Matches schema default
+    });
+
+    // Save to MongoDB
+    await newATSUPunchCard.save();
+
+    // Add to Excel
+    const excelData = [
+      "N/A", // Sponsor Name
+      guestName,
+      dateSold,
+      timestamp,
+      staffInitials,
+      guestPassNumber,
+      email || "N/A",
+      product,
+      100, // Matches schema default
+    ];
+    await addToExcel(excelData);
+
+    // Send email if provided
+    if (email) {
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: "ATSU Punch Card Receipt",
+        text: `Guest Name: ${guestName}\nDate Sold: ${dateSold}\nTimestamp: ${timestamp}\nSold By: ${staffInitials}\nReceipt Number: ${guestPassNumber}\nProduct: ${product}\nAmount: $100`,
+      };
+
+      try {
+        const info = await transporter.sendMail(mailOptions);
+        console.log(`Email sent to: ${email}`, info.response);
+      } catch (error) {
+        console.error("Email sending error:", error);
+        return res.status(500).send("ATSU Punch Card submitted but failed to send email notification");
+      }
+    }
+
+    res.status(200).send("ATSU Punch Card submitted successfully!");
+  } catch (error) {
+    console.error("Error submitting ATSU Punch Card:", error);
+    if (error.code === 11000) {
+      return res.status(400).send("Duplicate guest pass number");
+    }
+    res.status(500).send("Failed to submit ATSU Punch Card");
   }
 });
 
