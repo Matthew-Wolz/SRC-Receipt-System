@@ -231,32 +231,52 @@ app.post("/api/submit-guest-pass", async (req, res) => {
 
     // Send email if provided
     if (email) {
+      console.log(`Attempting to send email to: ${email}`); // Log email sending attempt
       const mailOptions = {
         from: process.env.EMAIL_USER,
         to: email,
         subject: "Guest Pass Receipt",
         text: `Sponsor Name: ${sponsorName}\nGuest Name: ${guestName}\nDate Sold: ${dateSold}\nSold By: ${staffInitials}\nGuest Pass Number: ${guestPassNumber}\nProduct: ${product}\nAmount: $${amount}`,
       };
+      
       try {
-        await transporter.sendMail(mailOptions);
+        const info = await transporter.sendMail(mailOptions);
+        console.log(`Email sent to: ${email}`, info.response);
       } catch (error) {
         console.error("Email sending error:", error);
-        throw new Error("Failed to send receipt email");
+        return res.status(500).send("Guest pass submitted but failed to send email notification");
       }
     }
 
     res.status(200).send("Guest pass submitted successfully!");
+
   } catch (error) {
     console.error("Error submitting guest pass:", error);
-    res.status(500).send(error.message || "Failed to submit guest pass");
+    res.status(500).send("Failed to submit guest pass");
   }
 });
 
 // Get all available dates with receipts
 app.get("/api/receipt-dates", async (req, res) => {
   try {
+    if (!fs.existsSync(excelFilePath)) {
+      return res.json([]);
+    }
+    
     const workbook = xlsx.readFile(excelFilePath);
-    res.json(workbook.SheetNames.filter(name => name !== "Sheet1"));
+    const sheetNames = workbook.SheetNames.filter(name => name !== "Sheet1");
+    
+    // Verify each sheet has data
+    const validDates = [];
+    for (const sheetName of sheetNames) {
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = xlsx.utils.sheet_to_json(worksheet);
+      if (jsonData.length > 0) {
+        validDates.push(sheetName);
+      }
+    }
+    
+    res.json(validDates);
   } catch (error) {
     console.error("Error getting receipt dates:", error);
     res.status(500).send("Error getting receipt dates");
@@ -269,9 +289,13 @@ app.get("/api/receipt/:date/:receiptNumber", async (req, res) => {
     const { date, receiptNumber } = req.params;
     const numReceipt = parseInt(receiptNumber);
     
+    if (!fs.existsSync(excelFilePath)) {
+      return res.status(404).send("No receipts file found");
+    }
+
     const workbook = xlsx.readFile(excelFilePath);
     if (!workbook.SheetNames.includes(date)) {
-      return res.status(404).send("Date not found");
+      return res.status(404).send("No receipts found for this date");
     }
     
     const worksheet = workbook.Sheets[date];
@@ -289,15 +313,12 @@ app.get("/api/receipt/:date/:receiptNumber", async (req, res) => {
   }
 });
 
-// Serve Excel file (FIXED VERSION - no longer overwrites existing data)
+// Serve Excel file
 app.get("/api/receipts", (req, res) => {
   try {
-    // Ensure file exists
     if (!fs.existsSync(excelFilePath)) {
       initializeExcelFile();
     }
-    
-    // Just serve the existing file without recreating it
     res.download(excelFilePath, "receipts.xlsx");
   } catch (error) {
     console.error("Error serving Excel file:", error);

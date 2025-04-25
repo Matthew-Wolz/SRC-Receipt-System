@@ -60,6 +60,9 @@ function GuestPassForm({ product, onClose }) {
       }
 
       setSuccess(data);
+      if (formData.email) {
+        console.log(`Email should have been sent to: ${formData.email}`);
+      }
       setFormData({
         sponsorName: "",
         guestName: "",
