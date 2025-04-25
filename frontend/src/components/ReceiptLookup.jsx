@@ -98,6 +98,7 @@ function ReceiptLookupPage() {
           <button 
             onClick={handleDownloadExcel}
             className="btn truman-button flex-grow-1 mx-2"
+            style={{ fontSize: '0.9rem' }} // Reduced font size for this button
           >
             Download Excel Sheet
           </button>
