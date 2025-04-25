@@ -11,8 +11,8 @@ function ReceiptForm({ sponsorName, guestName, staffInitials, emailReceipt, onCl
       guestName,
       staffInitials,
       dateSold: new Date().toLocaleDateString(),
-      guestPassNumber: 1, // Replace with dynamic logic for incrementing numbers
-      email: emailReceipt ? email : null, // Only include email if receipt is requested
+      guestPassNumber: 1,
+      email: emailReceipt ? email : null,
     };
 
     try {

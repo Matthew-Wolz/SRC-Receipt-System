@@ -9,7 +9,7 @@ function ReceiptLookupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [loadingDates, setLoadingDates] = useState(true);
-  const [isClearing, setIsClearing] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -57,30 +57,29 @@ function ReceiptLookupPage() {
     window.open("http://localhost:5000/api/receipts", "_blank");
   };
 
-  const handleClearExcel = async () => {
-    if (!window.confirm("Are you sure you want to clear all Excel data? This cannot be undone.")) {
-      return;
-    }
-
-    setIsClearing(true);
+  const handleSendExcelEmail = async () => {
+    setIsSendingEmail(true);
     try {
-      const response = await fetch("http://localhost:5000/api/clear-excel", {
+      const response = await fetch("http://localhost:5000/api/send-excel-email", {
         method: "POST"
       });
 
       if (response.ok) {
-        alert("Excel data cleared successfully");
-        setAvailableDates([]);
-        setSelectedDate('');
-        setReceiptData(null);
+        alert("Excel file sent successfully");
       } else {
-        throw new Error("Failed to clear Excel data");
+        throw new Error("Failed to send Excel file");
       }
     } catch (error) {
-      console.error("Error clearing Excel:", error);
+      console.error("Error sending Excel email:", error);
       alert(error.message);
     } finally {
-      setIsClearing(false);
+      setIsSendingEmail(false);
+    }
+  };
+
+  const handleDownloadPDF = () => {
+    if (receiptData && selectedDate) {
+      window.open(`http://localhost:5000/api/receipt-pdf/${selectedDate}/${receiptNumber}`, "_blank");
     }
   };
 
@@ -89,7 +88,6 @@ function ReceiptLookupPage() {
       <div className="text-center mb-4">
         <h1 className="truman-purple">Receipt Lookup</h1>
         
-        {/* Top row buttons - split the distance */}
         <div className="d-flex justify-content-between mb-3">
           <button 
             onClick={() => navigate('/')}
@@ -99,21 +97,16 @@ function ReceiptLookupPage() {
           </button>
           <button 
             onClick={handleDownloadExcel}
-            className="btn truman-button flex-grow-1 ms-2"
+            className="btn truman-button flex-grow-1 mx-2"
           >
             Download Excel Sheet
           </button>
-        </div>
-        
-        {/* Clear Excel button - spans same distance as top row buttons */}
-        <div className="d-flex justify-content-center mb-4">
           <button 
-            onClick={handleClearExcel}
-            className="btn btn-danger flex-grow-1"
-            disabled={isClearing}
-            style={{ maxWidth: 'calc(100% - 1rem)' }} // Adjust width to match top buttons
+            onClick={handleSendExcelEmail}
+            className="btn truman-button flex-grow-1 ms-2"
+            disabled={isSendingEmail}
           >
-            {isClearing ? "Clearing..." : "Clear Excel Data"}
+            {isSendingEmail ? "Sending..." : "Email Excel Sheet"}
           </button>
         </div>
       </div>
@@ -187,6 +180,10 @@ function ReceiptLookupPage() {
                   <td>{receiptData["Date"]}</td>
                 </tr>
                 <tr>
+                  <th>Timestamp</th>
+                  <td>{receiptData["Timestamp"]}</td>
+                </tr>
+                <tr>
                   <th>Staff Initials</th>
                   <td>{receiptData["Initials"]}</td>
                 </tr>
@@ -206,6 +203,12 @@ function ReceiptLookupPage() {
                 )}
               </tbody>
             </table>
+            <button 
+              onClick={handleDownloadPDF}
+              className="btn truman-button mt-2"
+            >
+              Download PDF Receipt
+            </button>
           </div>
         )}
       </div>

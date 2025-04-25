@@ -6,7 +6,8 @@ import YouthGuestPassForm from "./YouthGuestPassForm";
 import AthleticTapeForm from "./AthleticTapeForm";
 import HairTieForm from "./HairTieForm";
 import ATSUPunchCardForm from "./ATSUPunchCardForm";
-import PunchCardSheetForm from "./PunchCardSheetForm";
+import GuestMembershipForm from "./GuestMembershipForm";
+import LockerRentalForm from "./LockerRentalForm";
 
 function WelcomePage() {
   const [selectedProduct, setSelectedProduct] = useState("");
@@ -28,9 +29,9 @@ function WelcomePage() {
     switch (selectedProduct) {
       case "Daily Guest Pass":
         return <GuestPassForm onClose={() => setShowForm(false)} product={selectedProduct} />;
-      case "10 Visit Guest Pass":
+      case "Alumni, Spouse, Child 18+ Punch Card ($25)":
         return <GuestPassForm onClose={() => setShowForm(false)} product={selectedProduct} />;
-      case "10 Visit Children Guest Pass":
+      case "Child 14-17 Years Old Punch Card ($25)":
         return <ChildrenGuestPassForm onClose={() => setShowForm(false)} product={selectedProduct} />;
       case "Youth Guest Pass":
         return <YouthGuestPassForm onClose={() => setShowForm(false)} product={selectedProduct} />;
@@ -40,8 +41,10 @@ function WelcomePage() {
         return <HairTieForm onClose={() => setShowForm(false)} product={selectedProduct} />;
       case "ATSU Punch Card":
         return <ATSUPunchCardForm onClose={() => setShowForm(false)} product={selectedProduct} />;
-      case "Punch Card Sheet":
-        return <PunchCardSheetForm onClose={() => setShowForm(false)} product={selectedProduct} />;
+      case "Guest Membership":
+        return <GuestMembershipForm onClose={() => setShowForm(false)} product={selectedProduct} />;
+      case "Locker Rental":
+        return <LockerRentalForm onClose={() => setShowForm(false)} product={selectedProduct} />;
       default:
         return null;
     }
@@ -61,15 +64,16 @@ function WelcomePage() {
             onChange={handleProductSelect}
           >
             <option value="">Choose a product</option>
-            <option value="Daily Guest Pass">Daily Guest Pass</option>
-            <option value="10 Visit Guest Pass">10 Visit Guest Pass</option>
-            <option value="10 Visit Children Guest Pass">10 Visit Children Guest Pass</option>
-            <option value="Youth Guest Pass">Youth Guest Pass</option>
-            <option value="AthleticTape">Athletic Tape</option>
-            <option value="Hair Tie">Hair Tie</option>
-            <option value="ATSU Punch Card">ATSU Punch Card</option>
-            <option value="Punch Card Sheet">Punch Card Sheet</option>
-            <option value="Excel Spreadsheet">Excel Spreadsheet</option>
+            <option value="Daily Guest Pass">Daily Guest Pass ($3)</option>
+            <option value="Alumni, Spouse, Child 18+ Punch Card ($25)">Alumni, Spouse, Child 18+ Punch Card ($25)</option>
+            <option value="Child 14-17 Years Old Punch Card ($25)">Child 14-17 Years Old Punch Card ($25)</option>
+            <option value="Youth Guest Pass">Youth Guest Pass ($3)</option>
+            <option value="Athletic Tape">Athletic Tape ($1)</option>
+            <option value="Hair Tie">Hair Tie ($0.25)</option>
+            <option value="ATSU Punch Card">ATSU Punch Card ($100)</option>
+            <option value="Guest Membership">Guest Membership</option>
+            <option value="Locker Rental">Locker Rental</option>
+            <option value="Excel Spreadsheet">Excel Spreadsheet and Receipt Lookup</option>
           </select>
         </div>
       </div>

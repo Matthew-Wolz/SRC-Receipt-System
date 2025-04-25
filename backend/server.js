@@ -6,6 +6,7 @@ const xlsx = require("xlsx");
 const dotenv = require("dotenv");
 const path = require("path");
 const fs = require("fs");
+const PDFDocument = require("pdfkit");
 
 // Load environment variables
 dotenv.config();
@@ -17,6 +18,8 @@ const AthleticTape = require("./models/AthleticTape");
 const HairTie = require("./models/HairTie");
 const ChildrenGuestPass = require("./models/ChildrenGuestPass");
 const YouthGuestPass = require("./models/YouthGuestPass");
+const GuestMembership = require("./models/GuestMembership");
+const LockerRental = require("./models/LockerRental");
 
 // Initialize Express app
 const app = express();
@@ -43,7 +46,7 @@ const transporter = nodemailer.createTransport({
 
 // Initialize Excel file
 const excelFilePath = path.join(__dirname, "receipts.xlsx");
-const headers = ["Sponsor Name", "Guest Name", "Date", "Initials", "Receipt Number", "Email", "Item", "Price"];
+const headers = ["Sponsor Name", "Guest Name", "Date", "Timestamp", "Initials", "Receipt Number", "Email", "Item", "Price"];
 
 // Create or load Excel file
 const initializeExcelFile = () => {
@@ -86,17 +89,23 @@ const getNextGuestPassNumber = async () => {
     const lastTenVisitPunchCard = await TenVisitPunchCard.findOne().sort({ guestPassNumber: -1 });
     const lastChildrenGuestPass = await ChildrenGuestPass.findOne().sort({ guestPassNumber: -1 });
     const lastYouthGuestPass = await YouthGuestPass.findOne().sort({ guestPassNumber: -1 });
+    const lastGuestMembership = await GuestMembership.findOne().sort({ guestPassNumber: -1 });
+    const lastLockerRental = await LockerRental.findOne().sort({ guestPassNumber: -1 });
 
     const highestGuestPassNumber = lastGuestPass ? lastGuestPass.guestPassNumber : 0;
     const highestTenVisitPunchCardNumber = lastTenVisitPunchCard ? lastTenVisitPunchCard.guestPassNumber : 0;
     const highestChildrenGuestPassNumber = lastChildrenGuestPass ? lastChildrenGuestPass.guestPassNumber : 0;
     const highestYouthGuestPassNumber = lastYouthGuestPass ? lastYouthGuestPass.guestPassNumber : 0;
+    const highestGuestMembershipNumber = lastGuestMembership ? lastGuestMembership.guestPassNumber : 0;
+    const highestLockerRentalNumber = lastLockerRental ? lastLockerRental.guestPassNumber : 0;
 
     return Math.max(
       highestGuestPassNumber,
       highestTenVisitPunchCardNumber,
       highestChildrenGuestPassNumber,
-      highestYouthGuestPassNumber
+      highestYouthGuestPassNumber,
+      highestGuestMembershipNumber,
+      highestLockerRentalNumber
     ) + 1;
   } catch (error) {
     console.error("Error getting next guest pass number:", error);
@@ -131,32 +140,52 @@ const addToExcel = async (data) => {
   }
 };
 
+// Generate PDF receipt
+const generatePDFReceipt = (receiptData) => {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument();
+    const buffers = [];
+    
+    doc.on('data', buffers.push.bind(buffers));
+    doc.on('end', () => {
+      const pdfData = Buffer.concat(buffers);
+      resolve(pdfData);
+    });
+    
+    doc.fontSize(20).text('Student Recreation Center', { align: 'center' });
+    doc.fontSize(16).text('Receipt', { align: 'center' });
+    doc.moveDown();
+    
+    doc.fontSize(12);
+    doc.text(`Receipt #: ${receiptData["Receipt Number"]}`);
+    if (receiptData["Sponsor Name"] && receiptData["Sponsor Name"] !== "N/A") {
+      doc.text(`Sponsor Name: ${receiptData["Sponsor Name"]}`);
+    }
+    doc.text(`Guest Name: ${receiptData["Guest Name"]}`);
+    doc.text(`Date: ${receiptData["Date"]}`);
+    doc.text(`Timestamp: ${receiptData["Timestamp"]}`);
+    doc.text(`Staff Initials: ${receiptData["Initials"]}`);
+    doc.text(`Product: ${receiptData["Item"]}`);
+    doc.text(`Amount: $${receiptData["Price"]}`);
+    if (receiptData["Email"] && receiptData["Email"] !== "N/A") {
+      doc.text(`Email: ${receiptData["Email"]}`);
+    }
+    
+    doc.end();
+  });
+};
+
 // Health check endpoint
 app.get("/api/health", (req, res) => {
   res.status(200).send("Server is running");
 });
 
-// Clear Excel data
-app.post("/api/clear-excel", (req, res) => {
-  try {
-    const workbook = xlsx.utils.book_new();
-    const today = new Date();
-    const sheetName = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    const newWorksheet = xlsx.utils.aoa_to_sheet([headers]);
-    xlsx.utils.book_append_sheet(workbook, newWorksheet, sheetName);
-    xlsx.writeFile(workbook, excelFilePath);
-    res.status(200).send("Excel data cleared successfully");
-  } catch (error) {
-    console.error("Error clearing Excel:", error);
-    res.status(500).send("Failed to clear Excel data");
-  }
-});
-
 // Submit Guest Pass Endpoint
 app.post("/api/submit-guest-pass", async (req, res) => {
-  const { sponsorName, guestName, staffInitials, email, product, dateOfBirth, photoId } = req.body;
+  const { sponsorName, guestName, staffInitials, email, product, dateOfBirth, photoId, membershipType, duration } = req.body;
   const today = new Date();
   const dateSold = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const timestamp = today.toLocaleTimeString();
 
   // Input validation
   if (!guestName || !staffInitials) {
@@ -177,20 +206,21 @@ app.post("/api/submit-guest-pass", async (req, res) => {
 
     let newPass;
     let amount;
+    let productName = product;
 
     // Create new pass based on product type
     switch (product) {
       case "Daily Guest Pass":
         amount = 3;
-        newPass = new GuestPass({ sponsorName, guestName, dateSold, staffInitials, guestPassNumber, email, product, amount });
+        newPass = new GuestPass({ sponsorName, guestName, dateSold, timestamp, staffInitials, guestPassNumber, email, product, amount });
         break;
-      case "10 Visit Guest Pass":
+      case "Alumni, Spouse, Child 18+ Punch Card ($25)":
         amount = 25;
-        newPass = new TenVisitPunchCard({ sponsorName, guestName, dateSold, staffInitials, guestPassNumber, email, product, amount });
+        newPass = new TenVisitPunchCard({ sponsorName, guestName, dateSold, timestamp, staffInitials, guestPassNumber, email, product, amount });
         break;
-      case "10 Visit Children Guest Pass":
+      case "Child 14-17 Years Old Punch Card ($25)":
         amount = 25;
-        newPass = new ChildrenGuestPass({ guestName, photoId, dateSold, staffInitials, guestPassNumber, email, product, amount });
+        newPass = new ChildrenGuestPass({ guestName, photoId, dateSold, timestamp, staffInitials, guestPassNumber, email, product, amount });
         break;
       case "Youth Guest Pass":
         const birthDate = new Date(dateOfBirth);
@@ -199,7 +229,47 @@ app.post("/api/submit-guest-pass", async (req, res) => {
           return res.status(400).send("Youth Guest Pass is only available for guests under 14 years old");
         }
         amount = 3;
-        newPass = new YouthGuestPass({ sponsorName, guestName, dateOfBirth, dateSold, staffInitials, guestPassNumber, email, product, amount });
+        newPass = new YouthGuestPass({ sponsorName, guestName, dateOfBirth, dateSold, timestamp, staffInitials, guestPassNumber, email, product, amount });
+        break;
+      case "Guest Membership":
+        if (!membershipType || !duration) {
+          return res.status(400).send("Membership type and duration are required");
+        }
+        switch (membershipType) {
+          case "Spouse or 18+ Child":
+            amount = duration === "Spring/Fall Semester" ? 125 : duration === "Summer Session" ? 50 : 300;
+            break;
+          case "Alumni":
+            amount = duration === "Spring/Fall Semester" ? 175 : duration === "Summer Session" ? 75 : 425;
+            break;
+          case "Alumni Couple":
+            amount = duration === "Spring/Fall Semester" ? 300 : duration === "Summer Session" ? 140 : 740;
+            break;
+          default:
+            return res.status(400).send("Invalid membership type");
+        }
+        productName = `Guest Membership - ${membershipType} (${duration})`;
+        newPass = new GuestMembership({ guestName, dateSold, timestamp, staffInitials, guestPassNumber, email, product: productName, amount });
+        break;
+      case "Locker Rental":
+        if (!duration) {
+          return res.status(400).send("Duration is required");
+        }
+        switch (duration) {
+          case "1 Semester":
+            amount = 15;
+            break;
+          case "2 Semesters":
+            amount = 25;
+            break;
+          case "1 Year":
+            amount = 40;
+            break;
+          default:
+            return res.status(400).send("Invalid duration");
+        }
+        productName = `Locker Rental - ${duration}`;
+        newPass = new LockerRental({ guestName, dateSold, timestamp, staffInitials, guestPassNumber, email, product: productName, amount });
         break;
       default:
         return res.status(400).send("Invalid product type");
@@ -221,22 +291,23 @@ app.post("/api/submit-guest-pass", async (req, res) => {
       sponsorName || "N/A",
       guestName,
       dateSold,
+      timestamp,
       staffInitials,
       guestPassNumber,
       email || "N/A",
-      product,
+      productName,
       amount
     ];
     await addToExcel(excelData);
 
     // Send email if provided
     if (email) {
-      console.log(`Attempting to send email to: ${email}`); // Log email sending attempt
+      console.log(`Attempting to send email to: ${email}`);
       const mailOptions = {
         from: process.env.EMAIL_USER,
         to: email,
         subject: "Guest Pass Receipt",
-        text: `Sponsor Name: ${sponsorName}\nGuest Name: ${guestName}\nDate Sold: ${dateSold}\nSold By: ${staffInitials}\nGuest Pass Number: ${guestPassNumber}\nProduct: ${product}\nAmount: $${amount}`,
+        text: `Sponsor Name: ${sponsorName || "N/A"}\nGuest Name: ${guestName}\nDate Sold: ${dateSold}\nTimestamp: ${timestamp}\nSold By: ${staffInitials}\nGuest Pass Number: ${guestPassNumber}\nProduct: ${productName}\nAmount: $${amount}`,
       };
       
       try {
@@ -253,6 +324,73 @@ app.post("/api/submit-guest-pass", async (req, res) => {
   } catch (error) {
     console.error("Error submitting guest pass:", error);
     res.status(500).send("Failed to submit guest pass");
+  }
+});
+
+// Send Excel file via email
+app.post("/api/send-excel-email", async (req, res) => {
+  try {
+    if (!fs.existsSync(excelFilePath)) {
+      return res.status(404).send("Excel file not found");
+    }
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: "wolzie99@gmail.com",
+      subject: "Receipts Excel File",
+      text: "Please find attached the receipts Excel file.",
+      attachments: [
+        {
+          filename: "receipts.xlsx",
+          path: excelFilePath
+        }
+      ]
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log("Excel file email sent:", info.response);
+    res.status(200).send("Excel file sent successfully");
+  } catch (error) {
+    console.error("Error sending Excel file email:", error);
+    res.status(500).send("Failed to send Excel file email");
+  }
+});
+
+// Generate and download PDF receipt
+app.get("/api/receipt-pdf/:date/:receiptNumber", async (req, res) => {
+  try {
+    const { date, receiptNumber } = req.params;
+    const numReceipt = parseInt(receiptNumber);
+    
+    if (!fs.existsSync(excelFilePath)) {
+      return res.status(404).send("No receipts file found");
+    }
+
+    const workbook = xlsx.readFile(excelFilePath);
+    if (!workbook.SheetNames.includes(date)) {
+      return res.status(404).send("No receipts found for this date");
+    }
+    
+    const worksheet = workbook.Sheets[date];
+    const jsonData = xlsx.utils.sheet_to_json(worksheet);
+    
+    const receipt = jsonData.find(row => row["Receipt Number"] === numReceipt);
+    if (!receipt) {
+      return res.status(404).send("Receipt not found for this date");
+    }
+    
+    const pdfBuffer = await generatePDFReceipt(receipt);
+    
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename=receipt-${receiptNumber}.pdf`,
+      'Content-Length': pdfBuffer.length
+    });
+    
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error("Error generating PDF receipt:", error);
+    res.status(500).send("Error generating PDF receipt");
   }
 });
 

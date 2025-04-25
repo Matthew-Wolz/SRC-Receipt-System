@@ -1,16 +1,18 @@
 import React, { useState } from "react";
 
-function GuestPassForm({ product, onClose }) {
+function LockerRentalForm({ onClose, product }) {
   const [formData, setFormData] = useState({
-    sponsorName: "",
     guestName: "",
     staffInitials: "",
+    duration: "",
     emailReceipt: false,
     email: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  const durations = ["1 Semester ($15)", "2 Semesters ($25)", "1 Year ($40)"];
 
   const handleChange = (e) => {
     const { name, type, value, checked } = e.target;
@@ -21,8 +23,8 @@ function GuestPassForm({ product, onClose }) {
   };
 
   const validateForm = () => {
-    if (!formData.guestName || !formData.staffInitials) {
-      setError("Guest Name and Staff Initials are required.");
+    if (!formData.guestName || !formData.staffInitials || !formData.duration) {
+      setError("All fields except email are required.");
       return false;
     }
     if (/[0-9]/.test(formData.guestName) || /[0-9]/.test(formData.staffInitials)) {
@@ -48,9 +50,9 @@ function GuestPassForm({ product, onClose }) {
     }
 
     const guestPassData = {
-      sponsorName: formData.sponsorName,
       guestName: formData.guestName,
       staffInitials: formData.staffInitials,
+      duration: formData.duration,
       email: formData.emailReceipt ? formData.email : null,
       product,
     };
@@ -65,14 +67,14 @@ function GuestPassForm({ product, onClose }) {
       const data = await response.text();
 
       if (!response.ok) {
-        throw new Error(data || "Failed to submit guest pass.");
+        throw new Error(data || "Failed to submit locker rental.");
       }
 
       setSuccess(data);
       setFormData({
-        sponsorName: "",
         guestName: "",
         staffInitials: "",
+        duration: "",
         emailReceipt: false,
         email: "",
       });
@@ -87,16 +89,6 @@ function GuestPassForm({ product, onClose }) {
     <div className="truman-form p-4">
       <h3>{product}</h3>
       <form onSubmit={handleSubmit}>
-        <div className="mb-3">
-          <label className="form-label">Sponsor Name</label>
-          <input
-            type="text"
-            className="form-control"
-            name="sponsorName"
-            value={formData.sponsorName}
-            onChange={handleChange}
-          />
-        </div>
         <div className="mb-3">
           <label className="form-label">Guest Name</label>
           <input
@@ -118,6 +110,21 @@ function GuestPassForm({ product, onClose }) {
             onChange={handleChange}
             required
           />
+        </div>
+        <div className="mb-3">
+          <label className="form-label">Duration</label>
+          <select
+            className="form-select"
+            name="duration"
+            value={formData.duration}
+            onChange={handleChange}
+            required
+          >
+            <option value="">Select Duration</option>
+            {durations.map(duration => (
+              <option key={duration} value={duration}>{duration}</option>
+            ))}
+          </select>
         </div>
         <div className="mb-3 form-check">
           <input
@@ -159,4 +166,4 @@ function GuestPassForm({ product, onClose }) {
   );
 }
 
-export default GuestPassForm;
+export default LockerRentalForm;

@@ -1,16 +1,58 @@
 import React, { useState } from "react";
 
-function GuestPassForm({ product, onClose }) {
+function GuestMembershipForm({ onClose, product }) {
   const [formData, setFormData] = useState({
-    sponsorName: "",
     guestName: "",
     staffInitials: "",
+    membershipType: "",
+    duration: "",
     emailReceipt: false,
     email: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  // Membership types with pricing included in display
+  const membershipTypes = [
+    { value: "Spouse or 18+ Child", label: "Spouse or 18+ Child" },
+    { value: "Alumni", label: "Alumni" },
+    { value: "Alumni Couple", label: "Alumni Couple" },
+  ];
+
+  // Durations with pricing based on membership type
+  const getDurationOptions = (membershipType) => {
+    const baseDurations = [
+      { value: "Spring/Fall Semester", label: "Spring/Fall Semester" },
+      { value: "Summer Session", label: "Summer Session" },
+      { value: "Annual", label: "Annual" },
+    ];
+
+    if (!membershipType) return baseDurations;
+
+    const pricing = {
+      "Spouse or 18+ Child": {
+        "Spring/Fall Semester": "$125",
+        "Summer Session": "$50",
+        "Annual": "$300",
+      },
+      "Alumni": {
+        "Spring/Fall Semester": "$125",
+        "Summer Session": "$75",
+        "Annual": "$425",
+      },
+      "Alumni Couple": {
+        "Spring/Fall Semester": "$300",
+        "Summer Session": "$140",
+        "Annual": "$740",
+      },
+    };
+
+    return baseDurations.map((duration) => ({
+      ...duration,
+      label: `${duration.label} (${pricing[membershipType][duration.value]})`,
+    }));
+  };
 
   const handleChange = (e) => {
     const { name, type, value, checked } = e.target;
@@ -21,8 +63,8 @@ function GuestPassForm({ product, onClose }) {
   };
 
   const validateForm = () => {
-    if (!formData.guestName || !formData.staffInitials) {
-      setError("Guest Name and Staff Initials are required.");
+    if (!formData.guestName || !formData.staffInitials || !formData.membershipType || !formData.duration) {
+      setError("All fields except email are required.");
       return false;
     }
     if (/[0-9]/.test(formData.guestName) || /[0-9]/.test(formData.staffInitials)) {
@@ -48,9 +90,10 @@ function GuestPassForm({ product, onClose }) {
     }
 
     const guestPassData = {
-      sponsorName: formData.sponsorName,
       guestName: formData.guestName,
       staffInitials: formData.staffInitials,
+      membershipType: formData.membershipType,
+      duration: formData.duration,
       email: formData.emailReceipt ? formData.email : null,
       product,
     };
@@ -65,14 +108,15 @@ function GuestPassForm({ product, onClose }) {
       const data = await response.text();
 
       if (!response.ok) {
-        throw new Error(data || "Failed to submit guest pass.");
+        throw new Error(data || "Failed to submit guest membership.");
       }
 
       setSuccess(data);
       setFormData({
-        sponsorName: "",
         guestName: "",
         staffInitials: "",
+        membershipType: "",
+        duration: "",
         emailReceipt: false,
         email: "",
       });
@@ -87,16 +131,6 @@ function GuestPassForm({ product, onClose }) {
     <div className="truman-form p-4">
       <h3>{product}</h3>
       <form onSubmit={handleSubmit}>
-        <div className="mb-3">
-          <label className="form-label">Sponsor Name</label>
-          <input
-            type="text"
-            className="form-control"
-            name="sponsorName"
-            value={formData.sponsorName}
-            onChange={handleChange}
-          />
-        </div>
         <div className="mb-3">
           <label className="form-label">Guest Name</label>
           <input
@@ -118,6 +152,40 @@ function GuestPassForm({ product, onClose }) {
             onChange={handleChange}
             required
           />
+        </div>
+        <div className="mb-3">
+          <label className="form-label">Membership Type</label>
+          <select
+            className="form-select"
+            name="membershipType"
+            value={formData.membershipType}
+            onChange={handleChange}
+            required
+          >
+            <option value="">Select Membership Type</option>
+            {membershipTypes.map((type) => (
+              <option key={type.value} value={type.value}>
+                {type.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="mb-3">
+          <label className="form-label">Duration</label>
+          <select
+            className="form-select"
+            name="duration"
+            value={formData.duration}
+            onChange={handleChange}
+            required
+          >
+            <option value="">Select Duration</option>
+            {getDurationOptions(formData.membershipType).map((duration) => (
+              <option key={duration.value} value={duration.value}>
+                {duration.label}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="mb-3 form-check">
           <input
@@ -159,4 +227,4 @@ function GuestPassForm({ product, onClose }) {
   );
 }
 
-export default GuestPassForm;
+export default GuestMembershipForm;
